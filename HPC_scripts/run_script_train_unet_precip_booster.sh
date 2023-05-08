@@ -4,9 +4,9 @@
 #SBATCH --ntasks=1
 #SBATCH --output=train-unet-out.%j
 #SBATCH --error=train-unet-err.%j
-#SBATCH --time=20:40:00
+#SBATCH --time=00:40:00
 #SBATCH --gres=gpu:1
-#SBATCH --partition=booster
+#SBATCH --partition=develbooster
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=b.gong@fz-juelich.de
 
@@ -14,6 +14,7 @@
 module load Stages/2022 GCCcore/.11.2.0 dask/2021.9.1
 module load PyTorch/1.11-CUDA-11.5
 module load torchvision
+module load xarray/0.20.1
 #ml SciPy-bundle/2021.10
 source ../env_setup/venv_booster/bin/activate
 
