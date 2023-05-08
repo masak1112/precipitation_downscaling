@@ -2,6 +2,8 @@
 
 This repository serves as the official PyTorch implementation for precipitation downscaling using deep learning techniques. Specifically, we investigate several: the Swin transformer (SwinIR) and a combination of U-Net with a Generative Adversarial Network (GAN) and a diffusion component for probabilistic downscaling. Our approach involves mapping short-range forecasts obtained from the Integrated Forecast System (IFS), which are provided on a regular spherical grid with a resolution of IFS=0.1°, to high-resolution observation radar data (RADKLIM) with a resolution of 0.01°. The mapping ratio between these resolutions is a factor of 10.
 
+This repo can be used for temperature downscaling, which is the PyTorch version of the [repo](https://gitlab.jsc.fz-juelich.de/esde/machine-learning/downscaling_maelstrom)(TensorFLow version)
+
 ## Access the dataset
 The dataset used in this work is currently not publicly available. If you are interested in accessing the dataset, please contact Bing Gong at b.gong@fz-juelich.de for further information and possible arrangements.
 
