@@ -5,7 +5,44 @@ This repository serves as the official PyTorch implementation for precipitation 
 ## Access the dataset
 The dataset used in this work is currently not publicly available. If you are interested in accessing the dataset, please contact Bing Gong at b.gong@fz-juelich.de for further information and possible arrangements.
 
-## How to start 
+## Installation 
+
+1. Clone this repo by typing the following command in your personal target dirctory:
+
+```bash 
+git clone https://gitlab.jsc.fz-juelich.de/esde/machine-learning/precipitation_downscaling.git
+```
+
+Now, we will setup the virtual enviornment. Just make sure 'pip' is installed. 
+
+2. Change into this subdirectory after cloning:
+
+```bash 
+cd env_setup
+```
+
+3. Ceate your virtual environment by running:
+
+```bash 
+./install_pkg.sh
+```
+
+All the required packages that in the `requirement.txt`  will be installed under `venv_booster`  directory. if you want to custermised your enviornment location. You can revise the `--target`  argument under in `install_pkg.sh` 
+
+4. Enter the `HPC_scripts` directory
+
+```bash 
+cd ../HPC_scripts
+```
+
+Under this directory, we have prepared several runscript templates that can be used to submit your jobs to the JUWELS Booster and HDF-ML systems, which are operated at the Jülich Supercomputing Center.
+
+The runscript with name convention `run_script_<mode>_<model_name>_<variable>_<system>.sh`
+
+     *  `mode`: `train` or `test`, which are used for training or postprocessing
+     *  `model_name`: architecture name. e.g., unet, swinir,swinunet, diffusion etc.
+     *  `variable`: `precip` or `temp`, which indicate precipitation or temperature as 
+     *  `system`: `hdfml` or `booster`, which are used for HDFML or JUWELS Booster systems 
 
 
 ## License and Acknowledgement
