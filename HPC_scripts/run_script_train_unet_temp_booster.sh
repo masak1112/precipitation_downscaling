@@ -15,6 +15,7 @@ module load Stages/2022 GCCcore/.11.2.0 dask/2021.9.1
 module load PyTorch/1.11-CUDA-11.5
 module load torchvision
 module load  netcdf4-python/1.5.7
+module load xarray/0.20.1
 #ml SciPy-bundle/2021.10
 source ../env_setup/venv_booster/bin/activate
 

@@ -14,6 +14,7 @@
 module load Stages/2022 GCCcore/.11.2.0 dask/2021.9.1
 module load PyTorch/1.11-CUDA-11.5
 module load torchvision
+module load xarray/0.20.1
 #ml SciPy-bundle/2021.10
 source ../env_setup/venv_booster/bin/activate
 
@@ -26,7 +27,7 @@ save_dir=../results/exp_20230206_wgan
 #val_dir=/p/scratch/deepacf/deeprain/ji4/Downsacling/preprocessing/preprocessed_ifs_radklim_full_disk/val
 #save_dir=/p/scratch/deepacf/deeprain/ji4/Downsacling/results/swinSR_exp1110_origin_booster_3years_x2_5x4
 
-epochs=70
+epochsi=20
 #model_type=vitSR
 #model_type=swinIR
 model_type=wgan
