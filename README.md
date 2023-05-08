@@ -38,11 +38,10 @@ cd ../HPC_scripts
 Under this directory, we have prepared several runscript templates that can be used to submit your jobs to the JUWELS Booster and HDF-ML systems, which are operated at the Jülich Supercomputing Center.
 
 The runscript with name convention `run_script_<mode>_<model_name>_<variable>_<system>.sh`
-
-     *  `mode`: `train` or `test`, which are used for training or postprocessing
-     *  `model_name`: architecture name. e.g., unet, swinir,swinunet, diffusion etc.
-     *  `variable`: `precip` or `temp`, which indicate precipitation or temperature as 
-     *  `system`: `hdfml` or `booster`, which are used for HDFML or JUWELS Booster systems 
+*  `mode`: `train` or `test`, which are used for training or postprocessing
+*  `model_name`: architecture name. e.g., unet, swinir,swinunet, diffusion etc.
+*  `variable`: `precip` or `temp`, which indicate precipitation or temperature as 
+*  `system`: `hdfml` or `booster`, which indicate  HDFML or JUWELS Booster systems 
 
 
 ## License and Acknowledgement
@@ -52,7 +51,7 @@ This project is supported by [MAELSTROM project](https://www.maelstrom-eurohpc.e
 
 ## Contributors
 
-Bing Gong: b.gong@fz-juelich.de
-Yan Ji: y.ji@fz-juelich.de
-Maxim Bragilovski: maximbr@post.bgu.ac.il
-Michael Langguth: m.langguth@fz-juelich.de
+   * Bing Gong: b.gong@fz-juelich.de
+   * Yan Ji: y.ji@fz-juelich.de
+   * Maxim Bragilovski: maximbr@post.bgu.ac.il
+   * Michael Langguth: m.langguth@fz-juelich.de
