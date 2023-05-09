@@ -166,6 +166,7 @@ class UNet(nn.Module):
         torch.nn.init.xavier_uniform(self.output.weight)
 
     def forward(self, x: Tensor) -> Tensor:
+        x = x.cuda()
         # print("input shape",x.shape)
         if self.dataset_type == 'precipitation':
             x = self.upsampling(x)

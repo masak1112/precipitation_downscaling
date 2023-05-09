@@ -237,4 +237,10 @@ def check_str_in_list(list_in: List, str2check: str_or_List, labort: bool = True
     else:
         return stat, []
 
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
 

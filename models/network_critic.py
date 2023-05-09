@@ -49,6 +49,7 @@ class Discriminator(torch.nn.Module):
         self.output = nn.Linear(64, 1)
 
     def forward(self, x):
+        x = x.cuda()
         x = self.conv_block_n(x)
         x = self.maxpool_conv(x)
         x = self.flat(x)

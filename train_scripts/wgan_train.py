@@ -19,7 +19,7 @@ import math
 import os
 from main_scripts.dataset_temp import CustomTemperatureDataset
 from torch.optim import lr_scheduler
-
+from utils.other_utils import dotdict
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = True if torch.cuda.is_available() else False
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
@@ -81,7 +81,7 @@ class BuildWGANModel:
         self.val_dataloader = val_loader
         self.generator = generator.to(device)
         self.critic = critic.to(device)
-        self.hparams = hparams
+        self.hparams = dotdict(hparams)
         self.checkpoint_save = checkpoint_save
         self.save_dir = save_dir
         self.G_optimizer_lr = self.hparams.lr_gn

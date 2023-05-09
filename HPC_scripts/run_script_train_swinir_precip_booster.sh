@@ -18,7 +18,7 @@ source ../env_setup/venv_booster/bin/activate
 
 train_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/train
 val_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/val
-save_dir=../results/exp_20230320_swinIR_prep_fewer_varas_remove_last_batch/
+save_dir=../results/exp_20230505_swinIR_prep_fewer_varas_remove_last_batch/
 # save_dir=/p/scratch/deepacf/deeprain/ji4/Downsacling/results/swinUnet_exp1017_origin_booster_3years
 #train_dir=/p/scratch/deepacf/deeprain/ji4/Downsacling/preprocessing/preprocessed_ifs_radklim_full_disk/train
 #val_dir=/p/scratch/deepacf/deeprain/ji4/Downsacling/preprocessing/preprocessed_ifs_radklim_full_disk/val

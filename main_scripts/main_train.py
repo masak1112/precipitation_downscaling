@@ -56,7 +56,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     :param epochs          : the number of epochs
     :param type_net        : the type of the models
     """
-    wandb.init(project="Precip_downscaling",reinit=True ,id=wandb_id)
+    wandb.init(project="Precip_downscaling",reinit=True ,id=wandb_id + type_net,dir=save_dir)
     #some parameters for diffusion models
     difussion = False
     conditional = None
@@ -76,7 +76,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     if dataset_type=="precipitation":
         n_channels = 8
         upscale=4
-        img_size=[160, 160]
+        img_size=[16, 16]
     elif dataset_type == "temperature":
         n_channels = 9
         upscale=1
@@ -149,17 +149,19 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         raise NotImplementedError
 
 
-    #calculate the model size
-    flops, params = get_model_complexity_info(netG,  (n_channels, 16, 16),as_strings=True)
-    print("flops, params", flops, params)
-    #calculate the trainable parameters
     netG_params = sum(p.numel() for p in netG.parameters() if p.requires_grad)
     if type_net == "wgan":
         netC_params = sum(p.numel() for p in netC.parameters() if p.requires_grad)
         print("Total trainalbe parameters of the generator:", netG_params)
         print("Total trainalbe parameters of the critic:", netC_params)
+        flops, params = get_model_complexity_info(netC,  (1, 160, 160),as_strings=True)
+        print("flops for critic network, params for critic network", flops, params)
     else:
-        print("Total trainalbe parameters:", netG_params)
+        #calculate the model size
+        flops, params = get_model_complexity_info(netG,  (n_channels, img_size[0], img_size[1]),as_strings=True)
+        print("flops, params", flops, params)
+        #calculate the trainable parameters
+        print("Total trainalbe parameters of the network:", netG_params)
 
 
     # Build models for wgan and other models with one nerual network
@@ -168,7 +170,8 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                   "lr_gn_end":1.e-06, "lr_critic": 1.e-06,
                   "decay_start":25, "decay_end": 50,
                   "lambada_gp":10, "recon_weight":1000} 
-    
+        config.update(hparams)
+
         model = BuildWGANModel(generator=netG,
                                save_dir=save_dir,
                                critic=netC,
