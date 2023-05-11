@@ -1,6 +1,6 @@
 ## Precipitation downscaling by deep learning
 
-This repository serves as the official PyTorch implementation for precipitation downscaling using deep learning techniques. Specifically, we investigate several: the Swin transformer (SwinIR) and a combination of U-Net with a Generative Adversarial Network (GAN) and a diffusion component for probabilistic downscaling. Our approach involves mapping short-range forecasts obtained from the Integrated Forecast System (IFS), which are provided on a regular spherical grid with a resolution of IFS=0.1°, to high-resolution observation radar data (RADKLIM) with a resolution of 0.01°. The mapping ratio between these resolutions is a factor of 10.
+This repository serves as the official PyTorch implementation for precipitation downscaling using deep learning techniques. Specifically, we investigate several neural networks: the Swin transformer (SwinIR) and a combination of U-Net with a Generative Adversarial Network (GAN) and a diffusion component for probabilistic downscaling. Our approach involves mapping short-range forecasts obtained from the Integrated Forecast System (IFS), which are provided on a regular spherical grid with a resolution of IFS=0.1°, to high-resolution observation radar data (RADKLIM) with a resolution of 0.01°. The mapping ratio between these resolutions is a factor of 10.
 
 This repo can be used for temperature downscaling, which is the PyTorch version of the [repo](https://gitlab.jsc.fz-juelich.de/esde/machine-learning/downscaling_maelstrom)(TensorFLow version)
 
@@ -40,10 +40,10 @@ cd ../HPC_scripts
 Under this directory, we have prepared several runscript templates that can be used to submit your jobs to the JUWELS Booster and HDF-ML systems, which are operated at the Jülich Supercomputing Center.
 
 The runscript with name convention `run_script_<mode>_<model_name>_<variable>_<system>.sh`
-*  `mode`: `train` or `test`, which are used for training or postprocessing
+*  `mode`: `train` or `test`, which are used for training or postprocessing.
 *  `model_name`: architecture name. e.g., unet, swinir,swinunet, diffusion etc.
-*  `variable`: `precip` or `temp`, which indicate precipitation or temperature as 
-*  `system`: `hdfml` or `booster`, which indicate  HDFML or JUWELS Booster systems 
+*  `variable`: `precip` or `temp`, which indicate precipitation or temperature as target variable.
+*  `system`: `hdfml` or `booster`, which indicate  HDFML or JUWELS Booster systems.
 
 Configure the argument for each runscript and submit it by running:
 
