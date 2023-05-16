@@ -10,13 +10,12 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=b.gong@fz-juelich.de
 
-#module purge
+module purge
 module load Stages/2022 GCCcore/.11.2.0 dask/2021.9.1
 module load PyTorch/1.11-CUDA-11.5
-module load torchvision
-#module load xarray/0.20.1
-#ml SciPy-bundle/2021.10
-source ../env_setup/venv_booster/bin/activate
+module load torchvision/0.12.0-CUDA-11.5
+module load xarray/0.20.1
+source ../sc_venv_template/venv/bin/activate
 
 
 train_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/train
