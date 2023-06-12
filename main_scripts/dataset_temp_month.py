@@ -238,7 +238,7 @@ def run():
     # datasets_by_month = split_by_month_xarray(file_path="C:\\Users\\max_b\\PycharmProjects\\downscaling_maelstrom\\preproc_era5_crea6_small.nc")
     # //p//scratch//deepacf//maelstrom//maelstrom_data//ap5//downscaling_benchmark_dataset//preprocessed_era5_crea6//t2m//all_files//downscaling_tier2_train.nc
     datasets_by_month = CustomTemperatureDatasetByMonth(
-        file_path="C:\\Users\\max_b\\PycharmProjects\\downscaling_maelstrom\\preproc_era5_crea6_small.nc")
+        file_path="//p//scratch//deepacf//maelstrom//maelstrom_data//ap5//downscaling_benchmark_dataset//preprocessed_era5_crea6//t2m//all_files//downscaling_tier2_train.nc")
     train_dataloader = DataLoader(datasets_by_month, batch_size=32, shuffle=False)
 
     for i, train_data in enumerate(train_dataloader):
