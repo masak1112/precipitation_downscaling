@@ -183,7 +183,7 @@ class CustomTemperatureDatasetByMonth(Dataset):
             for month in months:
 
                 start_date = min_year + '-' + month + '-' + '01'
-                end_date = max_year + '-' + month + '-' + '28'
+                end_date = min_year + '-' + month + '-' + '28'
                 output[month].append(ds.sel(time=slice(start_date, end_date)))
 
                 min_year_int = int(min_year) + 1
