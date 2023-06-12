@@ -179,14 +179,15 @@ class CustomTemperatureDatasetByMonth(Dataset):
         max_year = times[times.shape[0] - 1].values.astype(str).split('-')[0]
 
         while int(min_year) <= int(max_year):
+
             for month in months:
 
                 start_date = min_year + '-' + month + '-' + '01'
-                end_date = min_year + '-' + month + '-' + '28'
+                end_date = max_year + '-' + month + '-' + '28'
                 output[month].append(ds.sel(time=slice(start_date, end_date)))
 
-            min_year_int = int(min_year) + 1
-            min_year = str(min_year_int)
+                min_year_int = int(min_year) + 1
+                min_year = str(min_year_int)
 
         for month in months:
             # x = output[month][0].to_dataset(name='a')
@@ -235,8 +236,9 @@ def split_in_tar(da: xr.DataArray, target_var: str = "t2m") -> (xr.DataArray, xr
 
 def run():
     # datasets_by_month = split_by_month_xarray(file_path="C:\\Users\\max_b\\PycharmProjects\\downscaling_maelstrom\\preproc_era5_crea6_small.nc")
+    # //p//scratch//deepacf//maelstrom//maelstrom_data//ap5//downscaling_benchmark_dataset//preprocessed_era5_crea6//t2m//all_files//downscaling_tier2_train.nc
     datasets_by_month = CustomTemperatureDatasetByMonth(
-        file_path="//p//scratch//deepacf//maelstrom//maelstrom_data//ap5//downscaling_benchmark_dataset//preprocessed_era5_crea6//t2m//all_files//downscaling_tier2_train.nc")
+        file_path="C:\\Users\\max_b\\PycharmProjects\\downscaling_maelstrom\\preproc_era5_crea6_small.nc")
     train_dataloader = DataLoader(datasets_by_month, batch_size=32, shuffle=False)
 
     for i, train_data in enumerate(train_dataloader):
