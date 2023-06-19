@@ -182,7 +182,7 @@ class CustomTemperatureDatasetByMonth(Dataset):
 
             min_year = times[0].values.astype(str).split('-')[0]
             max_year = times[times.shape[0] - 1].values.astype(str).split('-')[0]
-
+            print(min_year, max_year, month,'---------------------')
             while int(min_year) <= int(max_year):
 
                 start_date = min_year + '-' + month + '-' + '01'
