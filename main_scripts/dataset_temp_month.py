@@ -24,6 +24,36 @@ from handle_data.handle_data_temp import HandleUnetData
 from torch.utils.data import DataLoader
 
 
+def dt2cal(dt):
+    """
+    Convert array of datetime64 to a calendar array of year, month, day, hour,
+    minute, seconds, microsecond with these quantites indexed on the last axis.
+
+    Parameters
+    ----------
+    dt : datetime64 array (...)
+        numpy.ndarray of datetimes of arbitrary shape
+
+    Returns
+    -------
+    cal : uint32 array (..., 7)
+        calendar array with last axis representing year, month, day, hour,
+        minute, second, microsecond
+    """
+
+    # allocate output
+    out = np.empty(dt.shape + (7,), dtype="u4")
+    # decompose calendar floors
+    Y, M, D, h, m, s = [dt.astype(f"M8[{x}]") for x in "YMDhms"]
+    out[..., 0] = Y + 1970 # Gregorian Year
+    out[..., 1] = (M - Y) + 1 # month
+    out[..., 2] = (D - M) + 1 # dat
+    out[..., 3] = (dt - D).astype("m8[h]") # hour
+    out[..., 4] = (dt - h).astype("m8[m]") # minute
+    out[..., 5] = (dt - m).astype("m8[s]") # second
+    out[..., 6] = (dt - s).astype("m8[us]") # microsecond
+    return out
+
 class CustomTemperatureDatasetByMonth(Dataset):
 
     def __init__(self, file_path: str = None, batch_size: int = 32, verbose: int = 0, seed: int = 1234):
@@ -92,7 +122,7 @@ class CustomTemperatureDatasetByMonth(Dataset):
         end = time.time()
 
         divided_by_years = self.split_by_month_xarray(da_norm)
-        print(divided_by_years['01']['time'][divided_by_years['01']['time'].shape[0] - 1].values.astype(str).split('-')[0])
+
         # print(f'Loading took {(end - start) / 60} minutes')
         def gen(darr_in, darr_tar):
             ds_train_in = []
@@ -122,6 +152,19 @@ class CustomTemperatureDatasetByMonth(Dataset):
             self.time.append(times)
 
         self.time = np.concatenate(self.time, axis=0)
+        year = []
+        month = []
+        day = []
+        hour = []
+        for item in self.time:
+            item = dt2cal(item)
+            year.append(item[0].astype(int))
+            month.append(item[1].astype(int))
+            day.append(item[2].astype(int))
+            hour.append(item[3].astype(int))
+
+        self.time = torch.from_numpy(np.transpose(np.stack(
+            [year, month, day, hour])))
         # da_in, da_tar, times = split_in_tar(da_norm)
         end = time.time()
         # print(f'splitting took {(end - start) / 60} minutes')
@@ -205,7 +248,7 @@ class CustomTemperatureDatasetByMonth(Dataset):
         return len(self.ds_ins)
 
     def __getitem__(self, idx):
-        output = {'L': self.ds_ins[idx], 'H': self.ds_tars[idx], "T": self.times[idx]}
+        output = {'L': self.ds_ins[idx], 'H': self.ds_tars[idx], "T": self.time[idx]}
         return output
 
 
