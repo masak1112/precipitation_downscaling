@@ -110,7 +110,7 @@ class CustomTemperatureDatasetByMonth(Dataset):
         #
         # self.byTime = []
 
-        self.ds = self.ds.sel(time=slice("2006-01-01", "2008-01-01"))
+        # self.ds = self.ds.sel(time=slice("2006-01-01", "2008-01-01"))
         self.log = self.ds.sizes['rlon']
         self.lat = self.ds.sizes['rlat']
         self.times = np.transpose(np.stack(
