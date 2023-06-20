@@ -54,6 +54,42 @@ def dt2cal(dt):
     out[..., 6] = (dt - s).astype("m8[us]") # microsecond
     return out
 
+
+def split_by_month_xarray(ds):
+    output = {}
+    months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+    for month in months:
+        output[month] = []
+    times = ds['time']
+
+    for month in months:
+
+        min_year = times[0].values.astype(str).split('-')[0]
+        max_year = times[times.shape[0] - 1].values.astype(str).split('-')[0]
+
+        while int(min_year) <= int(max_year):
+            filtered_data = times[(times.dt.year == int(min_year)) & (times.dt.month == int(month))]
+            if len(filtered_data) == 0:
+                start_date = min_year + '-' + month + '-' + '01'
+                end_date = min_year + '-' + month + '-' + '28'
+            else:
+                max_date = filtered_data.max()
+                max_day = max_date.dt.day.item()
+                start_date = min_year + '-' + month + '-' + '01'
+                end_date = min_year + '-' + month + '-' + str(max_day)
+
+            output[month].append(ds.sel(time=slice(start_date, end_date)))
+            print(start_date, end_date)
+            min_year_int = int(min_year) + 1
+            min_year = str(min_year_int)
+
+    for month in months:
+        xarray_by_month = xr.merge([x.to_dataset(name='a') for x in output[month]])
+        output[month] = xarray_by_month
+
+    return output
+
+
 class CustomTemperatureDatasetByMonth(Dataset):
 
     def __init__(self, file_path: str = None, batch_size: int = 32, verbose: int = 0, seed: int = 1234):
@@ -121,7 +157,7 @@ class CustomTemperatureDatasetByMonth(Dataset):
         da_norm.load()
         end = time.time()
 
-        divided_by_years = self.split_by_month_xarray(da_norm)
+        divided_by_years = split_by_month_xarray(da_norm)
 
         # print(f'Loading took {(end - start) / 60} minutes')
         def gen(darr_in, darr_tar):
@@ -210,39 +246,6 @@ class CustomTemperatureDatasetByMonth(Dataset):
             print(key)
 
         return xr.DataArray.from_dict(data)
-
-    def split_by_month_xarray(self, ds):
-        output = {}
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
-        for month in months:
-            output[month] = []
-        times = ds['time']
-        print(times.shape)
-
-        # while int(min_year) <= int(max_year):
-
-        for month in months:
-
-            min_year = times[0].values.astype(str).split('-')[0]
-            max_year = times[times.shape[0] - 1].values.astype(str).split('-')[0]
-            print(min_year, max_year, month,'---------------------')
-            while int(min_year) <= int(max_year):
-
-                start_date = min_year + '-' + month + '-' + '01'
-                end_date = min_year + '-' + month + '-' + '28'
-                output[month].append(ds.sel(time=slice(start_date, end_date)))
-                print(start_date, end_date)
-                min_year_int = int(min_year) + 1
-                min_year = str(min_year_int)
-
-        for month in months:
-            # x = output[month][0].to_dataset(name='a')
-            # y = output[month][1].to_dataset(name='a')
-            # merge = xr.merge([output[month][0].to_dataset(name='a'), output[month][1].to_dataset(name='a')])
-            xarray_by_month = xr.merge([x.to_dataset(name='a') for x in output[month]])
-            output[month] = xarray_by_month
-
-        return output
 
     def __len__(self):
         return len(self.ds_ins)
