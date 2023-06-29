@@ -24,7 +24,6 @@ if cuda:
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
-
 class PrecipDatasetInter(torch.utils.data.IterableDataset):
     """
     This is the class used for generate dataset generator for precipitation downscaling
@@ -123,7 +122,12 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         dt = xr.open_mfdataset(filenames)
         # get input variables, and select the regions
         inputs = dt[self.vars_in].isel(lon = slice(2, 114)).sel(lat = slice(47.5, 60))
-        output = dt[self.var_out].isel(lon_tar = slice(16, 113 * 10 + 6)).sel(lat_tar = slice(47.41, 60))
+        # Get lons and lats from the inputs dataset
+        lats = inputs["lat"].values
+        lons = inputs["lon"].values
+        dx = lons[1] - lons[0]
+        lon_sl , lat_sl = slice(lons[0]-dx/2, lons[-1]+dx/2), slice(lats[0]-dx/2, lats[-1]+dx/2)
+        output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl}).isel(lon_tar = slice(0, 1120))
 
         n_lat = inputs["lat"].values.shape[0]
         n_lon = inputs["lon"].values.shape[0]
@@ -283,6 +287,7 @@ def run():
 
 if __name__ == "__main__":
     run()
+
 
 
 
