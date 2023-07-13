@@ -10,6 +10,8 @@ __date__ = "2022-08-22"
 import argparse
 import sys
 import torch
+from get_model import get_model
+from get_dataset import get_data_info
 import numpy as np
 sys.path.append('../')
 from models.network_unet import UNet as unet
@@ -33,6 +35,7 @@ def main():
                         default = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/test",
                         help = "The directory where test data (.nc files) are stored")
     parser.add_argument("--save_dir", type = str, help = "The output directory")
+    parser.add_argument("--dataset_type", type=str, default="precipitation", help="The dataset type: temperature, precipitation")
     parser.add_argument("--model_type", type = str, default = "unet", help = "The model type: unet, swinir")
     parser.add_argument("--mode", type = str, default = "test", help = "The mode type: train, test")
     parser.add_argument("--k", type = int, default = 0.01, help = "The parameter for log-transform")
@@ -43,62 +46,20 @@ def main():
 
     args = parser.parse_args()
 
-    n_channels = 8
+
+    n_channels, upscale, img_size = get_data_info(args.dataset_type, patch_size=16)
+
     print("The model {} is selected for training".format(args.model_type))
-    if args.model_type == "unet":
-        netG = unet(n_channels = n_channels)
-    elif args.model_type == "vitSR":
-        netG = vitSR(embed_dim = 768)
-    elif args.model_type == "swinUnet":
-        netG = swinUnet(img_size=160, 
-                        patch_size=4, 
-                        in_chans=n_channels,
-                        num_classes=1, 
-                        embed_dim=96, 
-                        depths=[2, 2, 2],
-                        depths_decoder=[1,2, 2], 
-                        num_heads=[6, 6, 6],
-                        window_size=5,
-                        mlp_ratio=4, 
-                        qkv_bias=True, 
-                        qk_scale=None,
-                        drop_rate=0., 
-                        attn_drop_rate=0., 
-                        drop_path_rate=0.1,
-                        ape=False,
-                        final_upsample="expand_first")
-    elif args.model_type == "swinIR":
-        netG = swinIR(img_size=160,
-                      patch_size=4,
-                      in_chans=n_channels,
-                      window_size=2,
-                      upscale= 4,
-                      upsampler= "pixelshuffle") 
-    elif args.model_type == "wgan":
-        netG = unet(n_channels=n_channels) 
-    elif args.model_type == "diffusion":
-        netG = UNet_diff(n_channels = n_channels+1,
-                         img_size=160)
-        difussion = True
-        gf = GaussianDiffusion(conditional=True,
-                               schedule_opt="linear",
-                               timesteps=200,
-                               model=netG)
-    
-    else:
-        raise NotImplementedError()
 
-    if args.model_type == "diffusion":
-        model = BuildModel(netG,  difussion=difussion,
-                       conditional=True, timesteps=args.timesteps)
+    netG, _ = get_model(args.model_net, args.dataset_type, img_size, n_channels, upscale)
 
-    else:
-        model = BuildModel(netG)
 
+    model = BuildModel(netG)
 
     test_loader = create_loader(file_path=args.test_dir,
                                 mode=args.mode,
                                 stat_path=args.stat_dir)
+    
     stat_file = os.path.join(args.stat_dir, "statistics.json")
     
     with open(stat_file,'r') as f:
@@ -137,6 +98,7 @@ def main():
             input_temp = np.squeeze(input_vars[:,-1,:,:])*vars_in_patches_std+vars_in_patches_mean
             input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
             input_list.append(input_temp)
+            
             if args.model_type == "diffusion":
                 #now, we only use the unconditional difussion model, meaning the inputs are only noise.
                 #This is the first test, later, we will figure out how to use conditioanl difussion model.
@@ -158,7 +120,6 @@ def main():
                 print("max values", np.max(model.E.cpu().numpy()))
                 print("min values", np.min(model.E.cpu().numpy()))
                 pred_temp = model.E.cpu().numpy() * vars_out_patches_std + vars_out_patches_mean
-                
                 pred_temp = np.exp(pred_temp+np.log(args.k))-args.k
                 #Get the groud truth values
                 ref_temp = model.H.cpu().numpy()*vars_out_patches_std+vars_out_patches_mean
@@ -228,6 +189,5 @@ def main():
 if __name__ == '__main__':
     cuda = torch.cuda.is_available()
     if cuda:
-        torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    
+        torch.set_default_tensor_type('torch.cuda.FloatTensor') 
     main()

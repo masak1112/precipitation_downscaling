@@ -9,10 +9,14 @@ __date__ = "2022-07-22"
 
 
 import argparse
+from selectors import EpollSelector
 import sys
 import os
 import json
+from main_scripts.get_dataset import get_dataset
+from get_dataset import get_data_info
 import torch
+from get_model import get_model
 sys.path.append('../')
 from models.network_unet import UNet as unet
 from models.network_swinir import SwinIR as swinIR
@@ -44,6 +48,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         type_net: str = "unet",
         dataset_type: str = "temperature",
         batch_size: int = 2,
+        patch_size: int = 16,
         wandb_id = None,
         **kwargs):
 
@@ -57,12 +62,15 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     :param type_net        : the type of the models
     """
     wandb.init(project="Precip_downscaling",reinit=True ,id=wandb_id + type_net,dir=save_dir)
-    #some parameters for diffusion models
-    difussion = False
-    conditional = None
-    timesteps = None
+
     wandb.run.name = type_net
     type_net = type_net.lower() 
+    
+    #some parameters for diffusion models
+    if type_net == "diffusion":
+        diffusion = True
+    else:
+        diffusion = False
 
     # Set default hyper-parameters for all the models and used for wandb log
     config = {"epochs":epochs, "batch_size": batch_size, 
@@ -71,98 +79,43 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
               }
     # This is the model hparameters should be tailored to each model afterwards
     hparams = {}
-
-    # Define parameters for datasets
-    if dataset_type=="precipitation":
-        n_channels = 8
-        upscale=4
-        img_size=[16, 16]
-    elif dataset_type == "temperature":
-        n_channels = 9
-        upscale=1
-        img_size=[96,120]
     
+    # get the dataset information based on the data type
+    n_channels, upscale, img_size = get_data_info(dataset_type, patch_size=patch_size)
+
     # Load the datasets
     train_loader = create_loader(file_path = train_dir, 
                                  batch_size = batch_size,
-                                 patch_size = 16, 
+                                 patch_size = patch_size, 
                                  stat_path = None,
                                  dataset_type = dataset_type)
     val_loader = create_loader(file_path=val_dir,
                                mode="test",
                                batch_size = batch_size,
                                stat_path=train_dir,
-                               patch_size=16,
+                               patch_size=patch_size,
                                dataset_type=dataset_type)
                                
     print("The model {} is selected for training".format(type_net))
-
-    # Define the models
-    if type_net == "unet":
-        netG = unet(n_channels = n_channels,dataset_type=dataset_type)
-
-    elif type_net == "swinir":
-        netG = swinIR(img_size=img_size,
-                      patch_size=4,
-                      in_chans=n_channels,
-                      window_size=2,
-                      upscale=upscale,
-                      upsampler= "pixelshuffle",
-                      dataset_type=dataset_type)
     
-    elif type_net.lower()  == "vitsr":
-        netG = vitSR(embed_dim =768)
-
-    elif type_net == "swinunet":
-        netG = swinUnet(img_size=img_size, 
-                        patch_size=4, 
-                        in_chans=n_channels,
-                        num_classes=1, 
-                        embed_dim=96, 
-                        depths=[2, 2, 2],
-                        depths_decoder=[1,2, 2], 
-                        num_heads=[6, 6, 6],
-                        window_size=5,
-                        mlp_ratio=4, 
-                        qkv_bias=True, 
-                        qk_scale=None,
-                        drop_rate=0., 
-                        attn_drop_rate=0., 
-                        drop_path_rate=0.1,
-                        ape=False,
-                        final_upsample="expand_first")
-
-    elif type_net == "diffusion":
-        conditional = kwargs["conditional"]
-        timesteps = kwargs["timesteps"]
-        # add one channel for the noise
-        netG = UNet_diff(img_size=img_size,
-                         n_channels=n_channels+1)
-        difussion = True
-
-    elif type_net == "wgan":
-        netG = unet(n_channels=n_channels, 
-                    dataset_type=dataset_type)
-        netC = critic((1, img_size[0], img_size[1]))
-
-    else:
-        raise NotImplementedError
-
+    netG, netC = get_model(type_net, dataset_type, img_size, n_channels, upscale)
 
     netG_params = sum(p.numel() for p in netG.parameters() if p.requires_grad)
+
     if type_net == "wgan":
         netC_params = sum(p.numel() for p in netC.parameters() if p.requires_grad)
         print("Total trainalbe parameters of the generator:", netG_params)
         print("Total trainalbe parameters of the critic:", netC_params)
         flops, params = get_model_complexity_info(netC,  (1, 160, 160),as_strings=True)
         print("flops for critic network, params for critic network", flops, params)
-    else:
+    elif type_net!="diffusion":
         #calculate the model size
         flops, params = get_model_complexity_info(netG,  (n_channels, img_size[0], img_size[1]),as_strings=True)
         print("flops, params", flops, params)
         #calculate the trainable parameters
         print("Total trainalbe parameters of the network:", netG_params)
-
+    else:
+        print("Flops calculation is not implemented yet for diffusion model")
 
     # Build models for wgan and other models with one nerual network
     if type_net == "wgan":
@@ -182,9 +135,9 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     else:
         model = BuildModel(netG,
                            save_dir = save_dir,
-                           difussion=difussion,
-                           conditional=conditional,
-                           timesteps=timesteps,
+                           diffusion=diffusion,
+                           conditional=None,
+                           timesteps=200,
                            train_loader = train_loader,
                            val_loader = val_loader)
         
@@ -194,7 +147,6 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     wandb.config.update({"lr":model.G_optimizer_lr})
     model.fit()
                 
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -206,10 +158,8 @@ def main():
     parser.add_argument("--batch_size", type=int, default=16, help="batch size")
     parser.add_argument("--epochs", type = int, default = 2, help = "The checkpoint directory")
     parser.add_argument("--model_type", type = str, default = "unet", help = "The model type: unet, swinir")
-    parser.add_argument("--dataset_type", type=str, default="precipitation",
-                        help="The dataset type: temperature, precipitation")
+    parser.add_argument("--dataset_type", type=str, default="precipitation", help="The dataset type: temperature, precipitation")
     parser.add_argument("--wandb_id", type=str, default="None",help="wandb_id")
-
     args = parser.parse_args()
 
     if not os.path.exists(args.save_dir):
@@ -225,7 +175,8 @@ def main():
         type_net = args.model_type,
         batch_size=args.batch_size,
         dataset_type=args.dataset_type,
-        wandb_id=args.wandb_id)
+        wandb_id=args.wandb_id, 
+        patch_size=16)
 
 if __name__ == '__main__':
     cuda = torch.cuda.is_available()
