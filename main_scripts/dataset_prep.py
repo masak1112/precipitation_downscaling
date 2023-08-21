@@ -122,22 +122,31 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         dt = xr.open_mfdataset(filenames)
         # get input variables, and select the regions
         inputs = dt[self.vars_in].isel(lon = slice(2, 114)).sel(lat = slice(47.5, 60))
-        # Get lons and lats from the inputs dataset
         lats = inputs["lat"].values
         lons = inputs["lon"].values
         dx = lons[1] - lons[0]
-        lon_sl , lat_sl = slice(lons[0]-dx/2, lons[-1]+dx/2), slice(lats[0]-dx/2, lats[-1]+dx/2)
-        output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl}).isel(lon_tar = slice(0, 1120))
+        lon_sl , lat_sl = slice(lons[0]-dx/2, lons[-1]+dx/2), slice(lats[0]-dx, lats[-1]+dx)
+        output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl}).isel(lon_tar = slice(0, 1120)).isel(lat_tar = slice(0, 840))
+        # Get lons and lats from the output dataset
+        lats_tar = output["lat_tar"].values
+        lons_tar = output["lon_tar"].values
 
-        n_lat = inputs["lat"].values.shape[0]
-        n_lon = inputs["lon"].values.shape[0]
+        n_lat = output["lat_tar"].values.shape[0]
+        n_lon = output["lon_tar"].values.shape[0]
 
+        # print("nputs.dims lats", inputs.dims["lat"] )
+        # print("output.dims lats",  output.dims["lat_tar"])
+        # print("nputs.dims lons", inputs.dims["lon"] )
+        # print("output.dims lons",  output.dims["lon_tar"])
         assert inputs.dims["time"] == output.dims["time"]
         assert inputs.dims["lat"] * self.sf == output.dims["lat_tar"]
+        assert inputs.dims["lon"] * self.sf == output.dims["lon_tar"]
 
-        n_patches_x = int(np.floor(n_lon) / self.patch_size)
-        n_patches_y = int(np.floor(n_lat) / self.patch_size)
-        num_patches_img = n_patches_x * n_patches_y
+        self.n_patches_x = int(n_lon/(self.patch_size * self.sf))
+        
+        self.n_patches_y = int(n_lat/(self.patch_size * self.sf))
+        self.num_patches_img = self.n_patches_x * self.n_patches_y
+        print("num_patches_images are", self.n_patches_x , self.n_patches_y)
 
         inputs_nparray = inputs.to_array(dim = "variables").squeeze().values.astype(np.float32)
         outputs_nparray = output.to_array(dim = "variables").squeeze().values.astype(np.float32)
@@ -150,6 +159,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         da_in = torch.from_numpy(inputs_nparray)
         da_out = torch.from_numpy(outputs_nparray)
+        self.n_samples = da_out.shape[0]
         del inputs_nparray, outputs_nparray
         gc.collect()
         times = inputs["time"].values  # get the timestamps
@@ -161,8 +171,9 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         vars_in_patches = da_in.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
         vars_in_patches_shape = list(vars_in_patches.shape)
 
+
         #sanity check to make sure the number of patches is as we expected
-        assert n_patches_x * n_patches_y == int(vars_in_patches_shape[2] * vars_in_patches_shape[3])
+        assert self.n_patches_x * self.n_patches_y == int(vars_in_patches_shape[2] * vars_in_patches_shape[3])
         
         vars_in_patches = torch.reshape(vars_in_patches, [vars_in_patches_shape[0],
                                                           vars_in_patches_shape[1] * vars_in_patches_shape[2] *
@@ -170,10 +181,14 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                                                           vars_in_patches_shape[4], vars_in_patches_shape[5]])
 
         vars_in_patches = torch.transpose(vars_in_patches, 0, 1)
-        print("Input shape:", vars_in_patches.shape)
+         
 
         ## Replicate times for patches in the same image
-        times_patches = torch.from_numpy(np.array([ x for x in times for _ in range(num_patches_img)]))
+        times_patches = torch.from_numpy(np.array([ x for x in times for _ in range(self.num_patches_img)]))
+        lons_patches = torch.from_numpy(np.array([ x for x in lons for _ in range(self.num_patches_img)]))
+        lats_patches = torch.from_numpy(np.array([ x for x in lats for _ in range(self.num_patches_img)]))
+        print("the shape of lons", lons_patches.shape)
+        print("the shape of lats", lats_patches.shape)
         
         ## sanity check 
         assert len(times_patches) ==  vars_in_patches_shape[1] * vars_in_patches_shape[2] * vars_in_patches_shape[3]
@@ -187,6 +202,13 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                                          [vars_out_patches_shape[0] * vars_out_patches_shape[1] *
                                           vars_out_patches_shape[2],
                                           vars_out_patches_shape[3], vars_out_patches_shape[4]])
+
+        #get lats and lons for each patch
+        lats_in = torch.from_numpy(lats_tar)
+        lons_in = torch.from_numpy(lons_tar)
+        self.lats_in_patches = lats_in.unfold(0, self.patch_size*self.sf, self.patch_size*self.sf)
+        self.lons_in_patches = lons_in.unfold(0, self.patch_size*self.sf, self.patch_size*self.sf)
+
 
         print("Output reshape", vars_out_patches.shape)
 
@@ -204,6 +226,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         vars_out_pathes_no_nan = torch.index_select(vars_out_patches, 0, no_nan_idx)
         vars_in_patches_no_nan = torch.index_select(vars_in_patches, 0, no_nan_idx)
         times_no_nan = torch.index_select(times_patches, 0, no_nan_idx)
+        # lons_no_nan = torch.index_select(lons_patches,0,no_nan_idx)
+        # lats_no_nan = torch.index_select(lats_patches,0, no_nan_idx)
         assert len(vars_out_pathes_no_nan) == len(vars_in_patches_no_nan)
 
         return vars_in_patches_no_nan, vars_out_pathes_no_nan, times_no_nan
@@ -223,6 +247,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         print("idx_perm",idx_perm)
         return idx_perm
 
+    
     def save_stats(self):
         output_file = os.path.join(self.file_path, "statistics.json")
         stats = {}
@@ -258,6 +283,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             y = torch.zeros(self.batch_size, self.patch_size * self.sf, self.patch_size * self.sf )
             t = torch.zeros(self.batch_size, 4, dtype = torch.int)
             cidx = torch.zeros(self.batch_size, 1, dtype = torch.int) #store the index
+            lons = torch.zeros(self.batch_size, self.patch_size*self.sf)
+            lats = torch.zeros(self.batch_size, self.patch_size*self.sf)
 
             for jj in range(self.batch_size):
 
@@ -266,24 +293,32 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 x[jj] = transform_x(self.vars_in_patches_list[cid])
                 y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_mean) / self.vars_out_patches_std
                 t[jj] = self.times_patches_list[cid]
+                lats_lons_cid = cid%self.num_patches_img 
+                lons_cid = int(lats_lons_cid%self.n_patches_x)
+                lats_cid = int(lats_lons_cid/self.n_patches_x)
+                   
+                lats[jj] = self.lats_in_patches[lats_cid]
+                lons[jj] = self.lons_in_patches[lons_cid]
                 cidx[jj] = torch.tensor(cid, dtype=torch.int)
 
                 self.idx += 1
-            yield  {'L': x, 'H': y, "idx": cidx, "T":t}
+            yield  {'L': x, 'H': y, "idx": cidx, "T":t, "lons":lons, "lats":lats}
 
 def run():
-    data_loader = PrecipDatasetInter(file_path="/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/train")
+    data_loader = PrecipDatasetInter(file_path="/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train_small/")
     print("created data_loader")
     for batch_idx, train_data in enumerate(data_loader):
         inputs = train_data["L"]
         target = train_data["H"]
         idx = train_data["idx"]
         times = train_data["T"]
-        print("inputs", inputs.size())
-        print("target", target.size())
-        print("idx", idx)
-        print("batch_idx", batch_idx)
-        print("timestamps,", times)
+        lats = train_data["lats"]
+        #print("inputs", inputs.size())
+        #print("target", target.size())
+        #print("idx", idx)
+        #print("batch_idx", batch_idx)
+        #print("timestamps,", times)
+        #print("len of lats",len(lats))
 
 if __name__ == "__main__":
     run()

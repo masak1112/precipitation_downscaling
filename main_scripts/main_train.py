@@ -13,7 +13,6 @@ from selectors import EpollSelector
 import sys
 import os
 import json
-from main_scripts.get_dataset import get_dataset
 from get_dataset import get_data_info
 import torch
 from get_model import get_model
@@ -62,7 +61,6 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     :param type_net        : the type of the models
     """
     wandb.init(project="Precip_downscaling",reinit=True ,id=wandb_id + type_net,dir=save_dir)
-
     wandb.run.name = type_net
     type_net = type_net.lower() 
     
@@ -97,7 +95,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                                dataset_type=dataset_type)
                                
     print("The model {} is selected for training".format(type_net))
-    
+
     netG, netC = get_model(type_net, dataset_type, img_size, n_channels, upscale)
 
     netG_params = sum(p.numel() for p in netG.parameters() if p.requires_grad)
@@ -136,7 +134,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         model = BuildModel(netG,
                            save_dir = save_dir,
                            diffusion=diffusion,
-                           conditional=None,
+                           conditional=False,
                            timesteps=200,
                            train_loader = train_loader,
                            val_loader = val_loader)
