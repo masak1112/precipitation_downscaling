@@ -126,6 +126,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         model = BuildWGANModel(generator=netG,
                                save_dir=save_dir,
                                critic=netC,
+                               epochs = epochs,
                                train_loader=train_loader,
                                val_loader=val_loader,
                                hparams=config,
@@ -133,6 +134,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     else:
         model = BuildModel(netG,
                            save_dir = save_dir,
+                           epochs = epochs,
                            diffusion=diffusion,
                            conditional=False,
                            timesteps=200,
