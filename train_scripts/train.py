@@ -8,7 +8,6 @@ sys.path.append('../')
 from models.diffusion_utils import GaussianDiffusion
 from models.network_unet import Upsampling
 from utils.data_loader import create_loader
-
 import time
 from collections import OrderedDict
 from torch.optim import Adam
@@ -23,7 +22,6 @@ import numpy as np
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = True if torch.cuda.is_available() else False
 #Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
-
 pname = "./logs/profile"
 
 
@@ -38,21 +36,21 @@ class BuildModel:
                  train_loader: object = None,
                  val_loader: object = None,
                  epochs: int = 20,
-                 decay_start: int = 5,
-                 decay_end: int = 30,
                  dataset_type: str = 'precipitation',
                  diffusion=False,
                  save_freq=1000,
+                 checkpoint = None,
                  **kwargs):
 
-        """
-        :param netG:
-        :param G_lossfn_type:
-        :param G_optimizer_type:
-        :param G_optimizer_lr:
-        :param save_dir: str, the save model path
-        :param diffusion: if enable diffusion, the conditional must be defined
-        :param kwargs: conditional: bool
+        """f
+        :param netG            : the network 
+        :param G_lossfn_type.  : loss type
+        :param G_optimizer_type: optimizer type
+        :param G_optimizer_lr. : the learning rate
+        :param save_dir        : the save model path
+        :param diffusion       : if enable diffusion, the "conditional"must be defined
+        :param kwargs: 
+            conditional: bool type,  if diffusion enabled
         """
 
         # ------------------------------------
@@ -70,22 +68,20 @@ class BuildModel:
         self.diffusion = diffusion
         self.save_dir = save_dir
         self.dataset_type=dataset_type
-
         self.epochs = epochs
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.decay_start = decay_start
-        self.decay_end = decay_end
         self.save_freq = save_freq
-
-
+        self.checkpoint = checkpoint
         if diffusion:
             self.conditional = kwargs["conditional"]
-            self.timesteps = kwargs["timesteps"]
 
 
     def init_train(self):
         wandb.watch(self.netG, log_freq=100)
+        print("self.checkpoint", self.checkpoint)
+        if not self.checkpoint:
+            self.load_model()
         self.netG.train()
         self.define_loss()
         self.define_optimizer()
@@ -123,8 +119,8 @@ class BuildModel:
     # ----------------------------------------
     def define_scheduler(self):
         self.schedulers.append(lr_scheduler.MultiStepLR(self.G_optimizer,
-                                                        milestones = [4000, 20000, 50000],
-                                                        gamma = 0.01))
+                                                        milestones = [10000, 20000, 23000],
+                                                        gamma = 0.1))
 
     # ----------------------------------------
     # save model / optimizer(optional)
@@ -143,16 +139,22 @@ class BuildModel:
             state_dict[key] = param.cpu()
         torch.save(state_dict, save_path)
 
+
+    def load_model(self):
+        """
+        Retrieve the trained model
+        """
+        print("The following checkpoint is loaded", self.checkpoint)
+        self.netG.load_state_dict(torch.load(self.checkpoint))
+        
+
     # ----------------------------------------
     # feed L/H data
     # ----------------------------------------
     def feed_data(self, data):
-        # print("The shape of input:", data['L'].shape)
-        # print("The min of input", np.min(data['H'].cpu().numpy()))
-        # print("The max of input", np.max(data['H'].cpu().numpy()))
 
         self.L = data['L'].cuda()
-        print("The time of the data:", data["T"])
+    
         if self.diffusion:
             upsampling = Upsampling(in_channels = 8)
             self.L = upsampling(self.L)
@@ -161,7 +163,7 @@ class BuildModel:
     def count_flops(self,data):
         # Count the number of FLOPs
         c_ops = count_ops(self.netG,data)
-        print("The number of FLOPS is:",c_opss )
+        print("The number of FLOPS is:",c_ops)
 
     # ----------------------------------------
     # feed L to netG
@@ -171,18 +173,21 @@ class BuildModel:
         if not self.diffusion:
             self.E = self.netG(self.L) #[:,0,:,:]
             #print("The prediction shape (E):", self.E.cpu().numpy().shape)
-            print("The min of prediction", np.min(self.E.detach().cpu().numpy()))
-            print("The max of prediction", np.max(self.E.detach().cpu().numpy()))
+            #print("The min of prediction", np.min(self.E.detach().cpu().numpy()))
+            #print("The max of prediction", np.max(self.E.detach().cpu().numpy()))
         else:
+            self.hr = self.H
             if len(self.H.shape) == 3:
                 self.H = torch.unsqueeze(self.H, dim = 1)
+
             h_shape = self.H.shape
-
             noise = torch.randn_like(self.H)
-            t = torch.randint(0, self.timesteps, (h_shape[0],), device = device).long()
-            gd = GaussianDiffusion(model = self.netG, timesteps = self.timesteps)
+            
+            t = torch.randint(0, 200, (h_shape[0],), device = device).long()
+    
+            gd = GaussianDiffusion(model = self.netG, timesteps = 200, conditional=self.conditional)
             x_noisy = gd.q_sample(x_start = self.H, t = t, noise = noise)
-
+    
             if not self.conditional:
                 self.E = self.netG(x_noisy, t)
 
@@ -197,18 +202,12 @@ class BuildModel:
     def optimize_parameters(self):
         self.G_optimizer.zero_grad()
         self.netG_forward()
-        #print("The shape of E:",self.E.shape)
-        #print("The shape of H:",self.H.shape)
         if len(self.E.shape) == 3:
             self.E = torch.unsqueeze(self.E, axis=1)
         if len(self.H.shape) ==3:
             self.H = torch.unsqueeze(self.H, axis=1)
         if not len(self.E.shape) == len(self.H.shape):
-            print("The shape of E:",self.E.shape)
-            print("The shape of H:",self.H.shape)
             raise ("The shape of generated data and ground truth are not the same as above")
-        print("The shape of E:",self.E.shape)
-        print("The shape of H:",self.H.shape)
         self.G_loss = self.G_lossfn(self.E, self.H)
         self.G_loss.backward()
         self.G_optimizer.step()
@@ -256,8 +255,7 @@ class BuildModel:
                 # -------------------------------
                 # 1) update learning rate
                 # -------------------------------
-                # if epoch > self.decay_start and epoch < self.decay_start:
-                # self.update_learning_rate(current_step)
+                self.update_learning_rate(current_step)
 
                 lr = self.get_lr()  # get learning rate
 
@@ -265,8 +263,7 @@ class BuildModel:
                 # 2) feed patch pairs
                 # -------------------------------
                 self.feed_data(train_data)
-                #print("E data", self.E.shape)
-                #print("H data", self.H.shape)
+            
                 # -------------------------------
                 # 3) optimize parameters
                 # -------------------------------

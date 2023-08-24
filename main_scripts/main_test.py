@@ -41,7 +41,7 @@ def main():
     parser.add_argument("--stat_dir", type = str, required = True,
                         default = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/train",
                         help = "The directory where the statistics json file of training data is stored")    
-    parser.add_argument("--checkpoint_dir", type = str, required = True, help = "Please provide the checkpoint directory")
+    parser.add_argument("--checkpoint", type = str, required = True, help = "Please provide the checkpoint file")
 
     args = parser.parse_args()
 
@@ -70,6 +70,7 @@ def main():
                                 stat_path=args.stat_dir)
     
     stat_file = os.path.join(args.stat_dir, "statistics.json")
+    print("The statsitics json files is opened from", stat_file)
     
     with open(stat_file,'r') as f:
         stat_data = json.load(f)
@@ -80,7 +81,7 @@ def main():
     vars_out_patches_std  = stat_data['yw_hourly_tar_std']
 
     with torch.no_grad():
-        model.netG.load_state_dict(torch.load(args.checkpoint_dir))#['model_state_dict']
+        model.netG.load_state_dict(torch.load(args.checkpoint))#['model_state_dict']
         idx = 0
         input_list = []
         pred_list = []
@@ -108,13 +109,14 @@ def main():
 
             #Get the low resolution inputs
             input_vars = test_data["L"]
-            input_temp = np.squeeze(input_vars[:,-1,:,:])*vars_in_patches_std+vars_in_patches_mean
-            input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+            input_temp = input_vars.cpu().numpy()
+            #input_temp = np.squeeze(input_vars[:,-1,:,:])*vars_in_patches_std+vars_in_patches_mean
+            #input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
 
             input_list.append(input_temp)
             lats_list.append(lats)
             lons_list.append(lons)
-            print("lats_list shape", np.array(lats).shape)
+     
             
             model.netG_forward()
             
@@ -130,7 +132,7 @@ def main():
                 samples = gd.sample(image_size=image_size, batch_size=batch_size, 
                                     channels=n_channels+1, x_in=x_in)
                 #chose the last channle and last varialbe (precipitation)
-                sample_last = samples[-1] *vars_out_patches_std+vars_out_patches_mean
+                sample_last = samples[-1] * vars_out_patches_std+vars_out_patches_mean
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 preds = np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
@@ -144,10 +146,12 @@ def main():
                 # print("the shape of the output",model.E.cpu().numpy().shape)
                 # print("max values", np.max(model.E.cpu().numpy()))
                 # print("min values", np.min(model.E.cpu().numpy()))
+                #preds = model.E.cpu().numpy()
                 preds = model.E.cpu().numpy() * vars_out_patches_std + vars_out_patches_mean
                 preds = np.exp(preds+np.log(args.k))-args.k
                 #Get the groud truth values
-                ref = model.H.cpu().numpy()*vars_out_patches_std+vars_out_patches_mean
+                #ref = model.H.cpu().numpy()
+                ref = model.H.cpu().numpy() * vars_out_patches_std + vars_out_patches_mean
                 ref = np.exp(ref+np.log(args.k))-args.k
 
             ref_list.append(ref)
@@ -164,7 +168,7 @@ def main():
         lats_hr = np.concatenate(lats_list, 0)
         lons_hr = np.concatenate(lons_list, 0)
         print("lats_list shape", lons_hr.shape)
-        print("shape of ")
+  \
   
 
         if args.model_type == "diffusion":
