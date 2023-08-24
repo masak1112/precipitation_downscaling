@@ -75,10 +75,10 @@ def main():
     with open(stat_file,'r') as f:
         stat_data = json.load(f)
 
-    vars_in_patches_mean  = stat_data['yw_hourly_in_mean']
-    vars_in_patches_std   = stat_data['yw_hourly_in_std']
-    vars_out_patches_mean = stat_data['yw_hourly_tar_mean']
-    vars_out_patches_std  = stat_data['yw_hourly_tar_std']
+    vars_in_patches_min = stat_data['yw_hourly_in_min']
+    vars_in_patches_max  = stat_data['yw_hourly_in_max']
+    vars_out_patches_min = stat_data['yw_hourly_tar_min']
+    vars_out_patches_max  = stat_data['yw_hourly_tar_max']
 
     with torch.no_grad():
         model.netG.load_state_dict(torch.load(args.checkpoint))#['model_state_dict']
@@ -132,7 +132,7 @@ def main():
                 samples = gd.sample(image_size=image_size, batch_size=batch_size, 
                                     channels=n_channels+1, x_in=x_in)
                 #chose the last channle and last varialbe (precipitation)
-                sample_last = samples[-1] * vars_out_patches_std+vars_out_patches_mean
+                sample_last = samples[-1]  * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 preds = np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
@@ -147,11 +147,13 @@ def main():
                 # print("max values", np.max(model.E.cpu().numpy()))
                 # print("min values", np.min(model.E.cpu().numpy()))
                 #preds = model.E.cpu().numpy()
-                preds = model.E.cpu().numpy() * vars_out_patches_std + vars_out_patches_mean
+                #np.log(outputs_nparray+self.k)-np.log(self.k)
+                preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                 preds = np.exp(preds+np.log(args.k))-args.k
+  
                 #Get the groud truth values
                 #ref = model.H.cpu().numpy()
-                ref = model.H.cpu().numpy() * vars_out_patches_std + vars_out_patches_mean
+                ref = model.H.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                 ref = np.exp(ref+np.log(args.k))-args.k
 
             ref_list.append(ref)
@@ -168,7 +170,6 @@ def main():
         lats_hr = np.concatenate(lats_list, 0)
         lons_hr = np.concatenate(lons_list, 0)
         print("lats_list shape", lons_hr.shape)
-  \
   
 
         if args.model_type == "diffusion":
