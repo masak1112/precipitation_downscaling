@@ -2,11 +2,11 @@
 #SBATCH --account=deepacf
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=train-out.%j
-#SBATCH --error=train-err.%j
+#SBATCH --output=train-diffusion-out.%j
+#SBATCH --error=train-diffusion-err.%j
 #SBATCH --time=00:20:00
 #SBATCH --gres=gpu:1
-#SBATCH --partition=develbooster
+#SBATCH --partition=booster
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=b.gong@fz-juelich.de
 
@@ -20,10 +20,11 @@ module load netcdf4-python/1.5.7
 source ../sc_venv_template/venv/bin/activate
 
 
-save_dir=../results/exp_20221218_diffusion_lr
+save_dir=../results/exp_20230628_diffusion_lr
 train_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/train
 val_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/val
 
 epochs=20
 model_type=diffusion
-srun --overlap python ../main_scripts/main_train.py --train_dir ${train_dir} --val_dir ${val_dir} --save_dir ${save_dir} --epochs ${epochs} --model_type ${model_type} --timesteps 1000
+
+srun --overlap python ../main_scripts/main_train.py --train_dir ${train_dir} --val_dir ${val_dir} --save_dir ${save_dir} --epochs ${epochs} --model_type ${model_type} 
