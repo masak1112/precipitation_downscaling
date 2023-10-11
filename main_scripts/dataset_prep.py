@@ -29,12 +29,18 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
     This is the class used for generate dataset generator for precipitation downscaling
     """
 
-    def __init__(self, file_path: str = None, batch_size: int = 32, patch_size: int = 16,
-                 vars_in: list = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in",
+    def __init__(self, file_path: str = None, 
+                 batch_size     : int = 32, 
+                 patch_size     : int = 16,
+                 vars_in        : list = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in",
                                   "u700_in","v700_in","yw_hourly_in"],
-                 vars_out: list = ["yw_hourly_tar"], sf: int = 10,
-                 seed: int = 1234, k: float = 0.01, mode: str = "train",
-                 stat_path: str = None):
+                 vars_out: list = ["yw_hourly_tar"], 
+                 sf: int = 10,
+                 seed: int = 1234, 
+                 k: float = 0.01, 
+                 mode: str = "train",
+                 stat_path: str = None,
+                 local: bool = False):
         """
         file_path : the path to the directory of .nc files
         vars_in   : the list contains the input variable names
@@ -44,7 +50,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                     the corresponding high-resolution patch size should be muliply by scale factor (sf)
         sf        : the scaling factor from low-resolution to high-resolution
         seed      : specify a seed so that we can generate the same random index for shuffle function
-        stat_dir  : the path to the directory of training .nc files
+        stat_path : the path to the directory of training .nc files
+        mode      : "train", "val" or "test"
+        k.        : the value for transofmration 
+        local.    : True: local sampling, False: Global sampling
         """
 
         super(PrecipDatasetInter).__init__()
@@ -59,20 +68,22 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.k = k 
         self.mode = mode
         self.stat_path = stat_path
+        
+        #initialise the list to store the inputs and outputs
         self.vars_in_patches_list = []
         self.vars_out_patches_list = []
         self.times_patches_list = []
         
-        prcpids = ['yw','cp','lsp']
-        self.prcp_indexes = []
+        _prcpids = ['yw','cp','lsp']
+        self._prcp_indexes = []
         i = 0
 
         while i < len(vars_in):
-            for j in range(len(prcpids)):
-                if prcpids[j] in vars_in[i]:
-                    self.prcp_indexes.append(i)
+            for j in range(len(_prcpids)):
+                if _prcpids[j] in vars_in[i]:
+                    self._prcp_indexes.append(i)
             i += 1
-        print('self.prcp_indexes: {}'.format(self.prcp_indexes))
+        print('self.prcp_indexes: {}'.format(self._prcp_indexes))
 
         # Search for files
         p = pathlib.Path(self.file_path)
@@ -86,14 +97,18 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         if len(files) < 1:
             raise RuntimeError('No files found.')
         print("Going to open the following files:", files)
-       
-        self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list  = self.process_netcdf(files)
+
+        if local:
+            self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list  = self.process_netcdf_local(files)
+        else:
+
+            self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list  = self.process_netcdf(files)
         print('self.times_patches_list: {}'.format(self.times_patches_list))
         stat_file = os.path.join(stat_path, "statistics.json")
 
 
         if self.mode == "train" and not os.path.exists(stat_file):
-            print("size of input",self.vars_in_patches_list.size())
+            
             self.vars_in_patches_min = [] 
             self.vars_in_patches_max = [] 
             for i in range(self.vars_in_patches_list.size()[1]):
@@ -106,6 +121,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         else:
             with open(stat_file,'r') as f:
                 stat_data = json.load(f)
+                print("Loading the stats file:", stat_file)
             self.vars_in_patches_min = []
             self.vars_in_patches_max = []
             for i in range(len(self.vars_in)):
@@ -143,8 +159,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
 
 
-
-    def process_netcdf(self, filenames: int = None):
+    def process_netcdf(self, filenames: int = None, local=False):
         """
         process netcdf files: filter the Nan Values, split to patches
         """
@@ -194,7 +209,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # split into small patches, the return dim are [vars, samples,n_patch_x, n_patch_y, patch_size, patch_size]
         vars_in_patches = da_in.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
         vars_in_patches_shape = list(vars_in_patches.shape)
-
 
         #sanity check to make sure the number of patches is as we expected
         assert self.n_patches_x * self.n_patches_y == int(vars_in_patches_shape[2] * vars_in_patches_shape[3])
@@ -258,6 +272,59 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
     
         return vars_in_patches_no_nan, vars_out_pathes_no_nan, times_no_nan
 
+
+    def process_netcdf_local(self, filenames: int = None):
+        """
+        process netcdf files: filter the Nan Values, split to patches
+        """
+        print("Loading data from the file:", filenames)
+        dt = xr.open_mfdataset(filenames)
+        # get input variables, and select the regions
+        inputs = dt[self.vars_in].isel(lon = slice(2, 18)).sel(lat = slice(47.5, 60)).isel(long = slice(0,16))
+        output = dt[self.var_out].isel(lon_tar = slice(16, 160+16)).sel(lat_tar = slice(47.41, 60)).isel(long = slice(0,160))
+
+        n_lat = inputs["lat"].values.shape[0]
+        n_lon = inputs["lon"].values.shape[0]
+
+        assert inputs.dims["time"] == output.dims["time"]
+        assert inputs.dims["lat"] * self.sf == output.dims["lat_tar"]
+
+        inputs_nparray = inputs.to_array(dim = "variables").squeeze().values.astype(np.float32)
+        outputs_nparray = output.to_array(dim = "variables").squeeze().values.astype(np.float32)
+        
+        # log-transform -> log(x+k)-log(k)
+        inputs_nparray[self.prcp_indexes] = np.log(inputs_nparray[self.prcp_indexes]+self.k)-np.log(self.k)
+        outputs_nparray = np.log(outputs_nparray+self.k)-np.log(self.k)
+        print('inputs_nparray shape: {}'.format(inputs_nparray.shape))
+        print('inputs_nparray[self.prcp_indexes] shape: {}'.format(inputs_nparray[self.prcp_indexes].shape))
+
+        da_in = torch.from_numpy(inputs_nparray)
+        da_out = torch.from_numpy(outputs_nparray)
+        del inputs_nparray, outputs_nparray
+        gc.collect()
+        times = inputs["time"].values  # get the timestamps
+        times = np.transpose(np.stack([dt["time"].dt.year,dt["time"].dt.month,dt["time"].dt.day,dt["time"].dt.hour]))        
+    
+        print("Original input shape:", da_in.shape)
+
+        no_nan_idx = []
+
+        # get the indx if there any nan in the sample
+        [no_nan_idx.append(i) for i in range(da_in.shape[0]) if not torch.isnan(da_in[i]).any()]
+
+        print("There are No. {} patches out of {} without Nan Values ".format(len(no_nan_idx), len(da_out)))
+
+        # change the index from List to LongTensor type
+        no_nan_idx = torch.LongTensor(no_nan_idx)
+
+        # Only get the patch that without NaN values
+        vars_out_pathes_no_nan = torch.index_select(da_in, 0, no_nan_idx)
+        vars_in_patches_no_nan = torch.index_select(da_out, 0, no_nan_idx)
+        times_no_nan = torch.index_select(times, 0, no_nan_idx)
+        assert len(vars_out_pathes_no_nan) == len(vars_in_patches_no_nan)
+
+        return vars_in_patches_no_nan, vars_out_pathes_no_nan, times_no_nan   
+    
     def shuffle(self):
         """
         shuffle the index 
@@ -274,15 +341,15 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         return idx_perm
 
     
-
     def __iter__(self):
 
-        iter_start, iter_end = 0, int(len(self.idx_perm)/self.batch_size)-1  # todo
+        iter_start, iter_end = 0, int(len(self.idx_perm)/self.batch_size)-1 
         self.idx = 0
         
         def normalize(x, x_min,x_max):
             return (x - x_min)/(x_max-x_min)
-
+         
+        # This is previous approach, which perfrms bad for precipitation
         #transform_x = torchvision.transforms.Normalize(self.vars_in_patches_mean, self.vars_in_patches_std)
 
         for bidx in range(iter_start, iter_end):
