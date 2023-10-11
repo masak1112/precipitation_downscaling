@@ -33,7 +33,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  vars_in: list = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in",
                                   "u700_in","v700_in","yw_hourly_in"],
                  vars_out: list = ["yw_hourly_tar"], sf: int = 10,
-                 seed: int = 1234, k: float = 0.01, mode: str = "train", stat_path: str = None):
+                 seed: int = 1234, k: float = 0.01, mode: str = "train",
+                 stat_path: str = None):
         """
         file_path : the path to the directory of .nc files
         vars_in   : the list contains the input variable names
@@ -88,8 +89,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
        
         self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list  = self.process_netcdf(files)
         print('self.times_patches_list: {}'.format(self.times_patches_list))
+        stat_file = os.path.join(stat_path, "statistics.json")
 
-        if self.mode == "train":
+
+        if self.mode == "train" and not os.path.exists(stat_file):
             print("size of input",self.vars_in_patches_list.size())
             self.vars_in_patches_min = [] 
             self.vars_in_patches_max = [] 
@@ -97,12 +100,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 self.vars_in_patches_min.append(torch.min(self.vars_in_patches_list[:,i,:,:]))
                 self.vars_in_patches_max.append(torch.max(self.vars_in_patches_list[:,i,:,:]))
 
-   
             self.vars_out_patches_min = torch.min(self.vars_out_patches_list)
             self.vars_out_patches_max = torch.max(self.vars_out_patches_list)
             self.save_stats()
         else:
-            stat_file = os.path.join(stat_path, "statistics.json")
             with open(stat_file,'r') as f:
                 stat_data = json.load(f)
             self.vars_in_patches_min = []
@@ -113,7 +114,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.vars_out_patches_min = stat_data[self.var_out[0]+'_min']
             self.vars_out_patches_max = stat_data[self.var_out[0]+'_max']
 
-        print("The total number of samples after filtering NaN values:", len(self.vars_in_patches_list))
+        print("The total number of samples after filtering NaN and zeros values:", len(self.vars_in_patches_list))
         
         self.n_samples = len(self.vars_in_patches_list)
         #print("var_out size",self.vars_out_patches_list)
@@ -122,7 +123,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         #self.idx_perm = np.arange(1, self.n_samples)
         
     def save_stats(self):
-        output_file = os.path.join(self.file_path, "statistics.json")
+        output_file = os.path.join(self.stat_path, "statistics.json")
         stats = {}
         for i in range(len(self.vars_in)):
             key = self.vars_in[i]+'_min'
@@ -150,15 +151,15 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         print("Loading data from the file:", filenames)
         dt = xr.open_mfdataset(filenames)
         # get input variables, and select the regions
-        #inputs = dt[self.vars_in].isel(lon = slice(2, 114)).sel(lat = slice(47.5, 60))
-        inputs = dt[self.vars_in].sel(lon = slice(10, 12)).sel(lat = slice(50, 52))
+        inputs = dt[self.vars_in].isel(lon = slice(2, 114)).sel(lat = slice(47.5, 60))
+        #inputs = dt[self.vars_in].sel(lon = slice(10, 12)).sel(lat = slice(50, 52))
         lats = inputs["lat"].values
         lons = inputs["lon"].values
         dx = lons[1] - lons[0]
 
         lon_sl , lat_sl = slice(lons[0]-dx/2, lons[-1]+dx/2), slice(lats[0]-dx, lats[-1]+dx)
-        output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl})
-        #output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl}).isel(lon_tar = slice(0, 1120)).isel(lat_tar = slice(0, 840))
+        #output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl})
+        output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl}).isel(lon_tar = slice(0, 1120)).isel(lat_tar = slice(0, 840))
         # Get lons and lats from the output dataset
         lats_tar = output["lat_tar"].values
         lons_tar = output["lon_tar"].values
@@ -166,17 +167,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         n_lat = output["lat_tar"].values.shape[0]
         n_lon = output["lon_tar"].values.shape[0]
 
-        print("inputs.dims lats", inputs.dims["lat"] )
-        print("output.dims lats",  output.dims["lat_tar"])
-        print("inputs.dims lons", inputs.dims["lon"] )
-        print("output.dims lons",  output.dims["lon_tar"])
-
-        # assert inputs.dims["time"] == output.dims["time"]
-        # assert inputs.dims["lat"] * self.sf == output.dims["lat_tar"]
-        # assert inputs.dims["lon"] * self.sf == output.dims["lon_tar"]
-
         self.n_patches_x = int(n_lon/(self.patch_size * self.sf))
-        
         self.n_patches_y = int(n_lat/(self.patch_size * self.sf))
         self.num_patches_img = self.n_patches_x * self.n_patches_y
         print("num_patches_images are", self.n_patches_x , self.n_patches_y)
@@ -198,7 +189,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         gc.collect()
         times = inputs["time"].values  # get the timestamps
         times = np.transpose(np.stack([dt["time"].dt.year,dt["time"].dt.month,dt["time"].dt.day,dt["time"].dt.hour]))        
-        
         print("Original input shape:", da_in.shape)
 
         # split into small patches, the return dim are [vars, samples,n_patch_x, n_patch_y, patch_size, patch_size]
@@ -216,7 +206,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         vars_in_patches = torch.transpose(vars_in_patches, 0, 1)
          
-        print("Vars_in_patches shape", vars_in_patches.shape)
         ## Replicate times for patches in the same image
         times_patches = torch.from_numpy(np.array([ x for x in times for _ in range(self.num_patches_img)]))
         lons_patches = torch.from_numpy(np.array([ x for x in lons for _ in range(self.num_patches_img)]))
@@ -241,17 +230,21 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         lons_in = torch.from_numpy(lons_tar)
         self.lats_in_patches = lats_in.unfold(0, self.patch_size*self.sf, self.patch_size*self.sf)
         self.lons_in_patches = lons_in.unfold(0, self.patch_size*self.sf, self.patch_size*self.sf)
-
-
         print("Output reshape", vars_out_patches.shape)
 
         no_nan_idx = []
-
+        no_zeros_idx = []
         # get the indx if there any nan in the sample
-        [no_nan_idx.append(i) for i in range(vars_out_patches.shape[0]) if not torch.isnan(vars_out_patches[i]).any()]
-
+        [no_nan_idx.append(i) for i in range(vars_out_patches.shape[0]) if (not torch.isnan(vars_out_patches[i]).any())]
+        #and torch.count_nonzero(vars_out_patches[i]) > 50)]
+       
+        # Get the index if the zero values
+        #[no_zeros_idx.append(i) for i in range(vars_out_patches.shape[0]) if torch.count_nonzero(vars_out_patches[i]) > 10]  
+        # no_nan_idx = list(set(no_nan_idx+no_zeros_idx))
+        print("no nan idx", len(no_nan_idx))
+        #print("no_zeros_idx", no_zeros_idx)
         print("There are No. {} patches out of {} without Nan Values ".format(len(no_nan_idx), len(vars_out_patches)))
-
+        
         # change the index from List to LongTensor type
         no_nan_idx = torch.LongTensor(no_nan_idx)
 
@@ -262,7 +255,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # lons_no_nan = torch.index_select(lons_patches,0,no_nan_idx)
         # lats_no_nan = torch.index_select(lats_patches,0, no_nan_idx)
         assert len(vars_out_pathes_no_nan) == len(vars_in_patches_no_nan)
-
+    
         return vars_in_patches_no_nan, vars_out_pathes_no_nan, times_no_nan
 
     def shuffle(self):
@@ -314,7 +307,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 lats_lons_cid = cid%self.num_patches_img 
                 lons_cid = int(lats_lons_cid%self.n_patches_x)
                 lats_cid = int(lats_lons_cid/self.n_patches_x)
-                   
                 lats[jj] = self.lats_in_patches[lats_cid]
                 lons[jj] = self.lons_in_patches[lons_cid]
                 cidx[jj] = torch.tensor(cid, dtype=torch.int)
@@ -331,8 +323,8 @@ def run():
         idx = train_data["idx"]
         times = train_data["T"]
         lats = train_data["lats"]
-        print("inputs min", torch.min(inputs))
-        print("inputs max", torch.max(inputs))
+        print("target min", torch.min(target))
+        print("target max", torch.max(target))
         #print("target", target.size())
         #print("idx", idx)
         #print("batch_idx", batch_idx)
