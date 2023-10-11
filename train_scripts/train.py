@@ -27,11 +27,11 @@ pname = "./logs/profile"
 
 class BuildModel:
     def __init__(self, netG,
-                 G_lossfn_type: str = "l1",
+                 G_lossfn_type: str = "l2",
                  G_optimizer_type: str = "adam",
-                 G_optimizer_lr: float = 5.e-03,
+                 G_optimizer_lr: float = 5.e-04,
                  G_optimizer_betas: list = [0.9, 0.999],  #5.e-05
-                 G_optimizer_wd: int = 5.e-03,
+                 G_optimizer_wd: int = 5.e-04,
                  save_dir: str = "../results",
                  train_loader: object = None,
                  val_loader: object = None,
@@ -79,8 +79,8 @@ class BuildModel:
 
     def init_train(self):
         wandb.watch(self.netG, log_freq=100)
-        print("self.checkpoint", self.checkpoint)
         if not self.checkpoint:
+            print("Loaing the following checkpoint", self.checkpoint)
             self.load_model()
         self.netG.train()
         self.define_loss()
@@ -119,13 +119,16 @@ class BuildModel:
     # ----------------------------------------
     def define_scheduler(self):
         self.schedulers.append(lr_scheduler.MultiStepLR(self.G_optimizer,
-                                                        milestones = [10000, 20000, 23000],
+                                                        milestones = [2500, 5000, 6000],
                                                         gamma = 0.1))
 
     # ----------------------------------------
     # save model / optimizer(optional)
     # ----------------------------------------
     def save(self, iter_label):
+        """
+        iter_label: current step
+        """
         self.save_network(self.save_dir, self.netG, 'G', iter_label)
 
     # ----------------------------------------
@@ -137,7 +140,9 @@ class BuildModel:
         state_dict = network.state_dict()
         for key, param in state_dict.items():
             state_dict[key] = param.cpu()
-        torch.save(state_dict, save_path)
+        torch.save({"iteration": iter_label,
+                    "model_state_dict":state_dict}, 
+                    save_path)
 
 
     def load_model(self):
