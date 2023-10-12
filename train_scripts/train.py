@@ -34,7 +34,6 @@ class BuildModel:
                  train_loader: object = None,
                  val_loader  : object = None,
                  dataset_type: str = 'precipitation',
-                 diffusion   : bool = False,
                  save_freq   : int = 1000,
                  checkpoint  : str = None,
                  hparams    : dict = None,
@@ -53,6 +52,7 @@ class BuildModel:
         self.netG = netG
 
         self.netG.to(device)
+        #Get paramers
         self.hparams = dotdict(hparams)
         self.G_lossfn_type = self.hparams.G_lossfn_type
         self.G_optimizer_type = self.hparams.G_optimizer_type
@@ -61,6 +61,7 @@ class BuildModel:
         self.G_optimizer_wd = self.hparams.G_optimizer_wd
         self.epochs = self.hparams.epochs
         self.diffusion = self.hparams.diffusion #: if enable diffusion, the "conditional"must be defined
+
         self.save_dir = save_dir
         self.dataset_type=dataset_type
         self.train_loader = train_loader
@@ -69,8 +70,8 @@ class BuildModel:
         self.checkpoint = checkpoint
         self.schedulers = []
         self.iteration = 0 
-        if diffusion:
-            self.conditional = kwargs["conditional"]
+        if self.diffusion:
+            self.conditional = True
 
 
     def init_train(self):
@@ -106,7 +107,8 @@ class BuildModel:
             else:
                 print('Params [{:s}] will not optimize.'.format(k))
 
-        self.G_optimizer = Adam(G_optim_params, lr = self.G_optimizer_lr,
+        self.G_optimizer = Adam(G_optim_params, 
+                                lr = self.G_optimizer_lr,
                                 betas = self.G_optimizer_betas,
                                 weight_decay = self.G_optimizer_wd)
 
@@ -133,7 +135,7 @@ class BuildModel:
     def save_network(self, network_label,iter_label):
         save_filename = '{}_{}.pth'.format(iter_label, network_label)
         save_path = os.path.join(self.save_dir, save_filename)
-        state_dict = self.network.state_dict()
+        state_dict = self.netG.state_dict()
         for key, param in state_dict.items():
             state_dict[key] = param.cpu()
         torch.save({"iteration": iter_label,
@@ -252,7 +254,6 @@ class BuildModel:
         for epoch in range(self.epochs):
             for i, train_data in enumerate(self.train_loader):
                 st = time.time()
-                
                 current_step += 1
 
                 # -------------------------------
