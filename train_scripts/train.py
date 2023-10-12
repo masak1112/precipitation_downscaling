@@ -125,15 +125,15 @@ class BuildModel:
         """
         iter_label: current step
         """
-        self.save_network(self.save_dir, self.netG, 'G', iter_label)
+        self.save_network('G', iter_label)
 
     # ----------------------------------------
     # save the state_dict of the network
     # ----------------------------------------
-    def save_network(self, save_dir, network, network_label, iter_label):
+    def save_network(self, network_label,iter_label):
         save_filename = '{}_{}.pth'.format(iter_label, network_label)
-        save_path = os.path.join(save_dir, save_filename)
-        state_dict = network.state_dict()
+        save_path = os.path.join(self.save_dir, save_filename)
+        state_dict = self.network.state_dict()
         for key, param in state_dict.items():
             state_dict[key] = param.cpu()
         torch.save({"iteration": iter_label,
