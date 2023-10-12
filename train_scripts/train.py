@@ -3,11 +3,7 @@ __email__ = "b.gong@fz-juelich.de"
 __author__ = "Bing Gong"
 __date__ = "2022-12-08"
 
-import sys
-sys.path.append('../')
-from models.diffusion_utils import GaussianDiffusion
-from models.network_unet import Upsampling
-from utils.data_loader import create_loader
+
 import time
 from collections import OrderedDict
 from torch.optim import Adam
@@ -17,6 +13,13 @@ import os
 from torch.optim import lr_scheduler
 import wandb
 import numpy as np
+import sys
+sys.path.append('../')
+from models.diffusion_utils import GaussianDiffusion
+from models.network_unet import Upsampling
+from utils.data_loader import create_loader
+from utils.other_utils import dotdict
+
 
 #SBATCH --mail-ty
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -27,28 +30,19 @@ pname = "./logs/profile"
 
 class BuildModel:
     def __init__(self, netG,
-                 G_lossfn_type: str = "l2",
-                 G_optimizer_type: str = "adam",
-                 G_optimizer_lr: float = 5.e-04,
-                 G_optimizer_betas: list = [0.9, 0.999],  #5.e-05
-                 G_optimizer_wd: int = 5.e-04,
-                 save_dir: str = "../results",
+                 save_dir    : str = "../results",
                  train_loader: object = None,
-                 val_loader: object = None,
-                 epochs: int = 20,
+                 val_loader  : object = None,
                  dataset_type: str = 'precipitation',
-                 diffusion=False,
-                 save_freq=1000,
-                 checkpoint = None,
+                 diffusion   : bool = False,
+                 save_freq   : int = 1000,
+                 checkpoint  : str = None,
+                 hparams    : dict = None,
                  **kwargs):
 
         """f
         :param netG            : the network 
-        :param G_lossfn_type.  : loss type
-        :param G_optimizer_type: optimizer type
-        :param G_optimizer_lr. : the learning rate
-        :param save_dir        : the save model path
-        :param diffusion       : if enable diffusion, the "conditional"must be defined
+        :param save_dir        : the save model path   
         :param kwargs: 
             conditional: bool type,  if diffusion enabled
         """
@@ -59,20 +53,22 @@ class BuildModel:
         self.netG = netG
 
         self.netG.to(device)
-        self.G_lossfn_type = G_lossfn_type
-        self.G_optimizer_type = G_optimizer_type
-        self.G_optimizer_lr = G_optimizer_lr
-        self.G_optimizer_betas = G_optimizer_betas
-        self.G_optimizer_wd = G_optimizer_wd
-        self.schedulers = []
-        self.diffusion = diffusion
+        self.hparams = dotdict(hparams)
+        self.G_lossfn_type = self.hparams.G_lossfn_type
+        self.G_optimizer_type = self.hparams.G_optimizer_type
+        self.G_optimizer_lr = self.hparams.G_optimizer_lr
+        self.G_optimizer_betas = self.hparams.G_optimizer_betas
+        self.G_optimizer_wd = self.hparams.G_optimizer_wd
+        self.epochs = self.hparams.epochs
+        self.diffusion = self.hparams.diffusion #: if enable diffusion, the "conditional"must be defined
         self.save_dir = save_dir
         self.dataset_type=dataset_type
-        self.epochs = epochs
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.save_freq = save_freq
         self.checkpoint = checkpoint
+        self.schedulers = []
+        self.iteration = 0 
         if diffusion:
             self.conditional = kwargs["conditional"]
 
@@ -150,7 +146,9 @@ class BuildModel:
         Retrieve the trained model
         """
         print("The following checkpoint is loaded", self.checkpoint)
-        self.netG.load_state_dict(torch.load(self.checkpoint))
+        ck = torch.load(self.checkpoint)
+        self.netG.load_state_dict(ck)
+        self.itertion =  ck["iteration"]
         
 
     # ----------------------------------------
@@ -250,11 +248,11 @@ class BuildModel:
     #train model
     def fit(self):
         self.init_train()
-        current_step = 0
+        current_step = self.iteration 
         for epoch in range(self.epochs):
             for i, train_data in enumerate(self.train_loader):
                 st = time.time()
-
+                
                 current_step += 1
 
                 # -------------------------------
@@ -286,6 +284,7 @@ class BuildModel:
                 wandb.log({"loss": self.G_loss, "lr": lr})
             
             self.save(current_step)
+
             with torch.no_grad():
                 val_loss = 0
                 counter = 0

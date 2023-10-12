@@ -73,9 +73,7 @@ class BuildWGANModel:
                  checkpoint_save: int = None,
                  save_dir: str = None,
                  dataset_type: str = 'precipitation'):
-        """
 
-        """
         self.dataset_type = dataset_type
         self.train_dataloader = train_loader
         self.val_dataloader = val_loader

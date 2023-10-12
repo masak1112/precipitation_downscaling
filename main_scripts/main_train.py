@@ -36,6 +36,7 @@ import wandb
 os.environ["WANDB_MODE"]="offline"
 ##os.environ["WANDB_API_KEY"] = key
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
 torch.manual_seed(0)
 available_models = ["unet", "wgan", "diffusion", "swinIR","swinUnet"]
 
@@ -48,7 +49,8 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         dataset_type: str = "temperature",
         batch_size: int = 2,
         patch_size: int = 16,
-        wandb_id = None,
+        wandb_id: str = None,
+        checkpoint = None,
         **kwargs):
 
     """
@@ -60,8 +62,17 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     :param epochs          : the number of epochs
     :param type_net        : the type of the models
     """
-    wandb.init(project="Precip_downscaling",reinit=True ,id=wandb_id + type_net,dir=save_dir)
-    wandb.run.name = type_net
+    
+    #Initial Wandb
+    id = wandb.util.generate_id() + type_net
+    # Set default hyper-parameters for all the models and used for wandb log
+    config = {"epochs":epochs, "batch_size": batch_size, 
+              "train_dir": train_dir, "val_dir":val_dir, 
+              "save_dir":save_dir, "type_net":type_net,
+              "patch_size": patch_size, "checkpoint": checkpoint
+              }
+    wandb.init(project="Precip_downscaling",reinit=True, id=id, dir=save_dir, config=config)
+    wandb.run.name = id
     type_net = type_net.lower() 
     
     #some parameters for diffusion models
@@ -70,11 +81,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     else:
         diffusion = False
 
-    # Set default hyper-parameters for all the models and used for wandb log
-    config = {"epochs":epochs, "batch_size": batch_size, 
-              "train_dir": train_dir, "val_dir":val_dir, 
-              "save_dir":save_dir, "type_net":type_net,
-              }
+    
     # This is the model hparameters should be tailored to each model afterwards
     hparams = {}
     
@@ -85,8 +92,10 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
     train_loader = create_loader(file_path = train_dir, 
                                  batch_size = batch_size,
                                  patch_size = patch_size, 
-                                 stat_path = None,
-                                 dataset_type = dataset_type)
+                                 dataset_type = dataset_type, 
+                                 stat_path=train_dir,
+                                 mode="train")
+                                 
     val_loader = create_loader(file_path=val_dir,
                                mode="test",
                                batch_size = batch_size,
@@ -108,8 +117,9 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         print("flops for critic network, params for critic network", flops, params)
     elif type_net!="diffusion":
         #calculate the model size
-        flops, params = get_model_complexity_info(netG,  (n_channels, img_size[0], img_size[1]),as_strings=True)
-        print("flops, params", flops, params)
+        #flops, params = get_model_complexity_info(netG,  (n_channels, img_size[0], img_size[1]),as_strings=True)
+        netG_params = None
+        #print("flops, params", flops, params)
         #calculate the trainable parameters
         print("Total trainalbe parameters of the network:", netG_params)
     else:
@@ -120,29 +130,36 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         hparams = {"critic_iterations": 5, "lr_gn": 1.e-05, 
                   "lr_gn_end":1.e-06, "lr_critic": 1.e-06,
                   "decay_start":25, "decay_end": 50,
-                  "lambada_gp":10, "recon_weight":1000} 
+                  "lambada_gp":10, "recon_weight":1000}
+        
         config.update(hparams)
 
         model = BuildWGANModel(generator=netG,
                                save_dir=save_dir,
                                critic=netC,
-                               epochs = epochs,
                                train_loader=train_loader,
                                val_loader=val_loader,
                                hparams=config,
                                dataset_type=dataset_type)
     else:
+        #default parameters for other models (except WGAN)
+        hparams = {"G_lossfn_type": "l2",
+                   "G_optimizer_type": "adam",
+                   "G_optimizer_lr": 5.e-04,
+                  "G_optimizer_betas":[0.9, 0.999],
+                  "G_optimizer_wd": 5.e-04,
+                   "timesteps":200,
+                   "diffusion": diffusion,
+                   "conditional": False}
+        config.update(hparams)
         model = BuildModel(netG,
                            save_dir = save_dir,
-                           epochs = epochs,
-                           diffusion=diffusion,
-                           conditional=False,
-                           timesteps=200,
+                           hparams = config,
                            train_loader = train_loader,
-                           val_loader = val_loader)
+                           val_loader = val_loader,
+                           checkpoint = checkpoint)
         
     #config.update(hparams)
-    wandb.config = config
     wandb.config.update(hparams)
     wandb.config.update({"lr":model.G_optimizer_lr})
     model.fit()
@@ -159,7 +176,8 @@ def main():
     parser.add_argument("--epochs", type = int, default = 2, help = "The checkpoint directory")
     parser.add_argument("--model_type", type = str, default = "unet", help = "The model type: unet, swinir")
     parser.add_argument("--dataset_type", type=str, default="precipitation", help="The dataset type: temperature, precipitation")
-    parser.add_argument("--wandb_id", type=str, default="None",help="wandb_id")
+    parser.add_argument("--wandb_id", type=str, default="None",help="Please provided the wandb id")
+    parser.add_argument("--checkpoint", type=str, default="None",help="Please provided the checkpoint path")
     args = parser.parse_args()
 
     if not os.path.exists(args.save_dir):
@@ -175,8 +193,9 @@ def main():
         type_net = args.model_type,
         batch_size=args.batch_size,
         dataset_type=args.dataset_type,
-        wandb_id=args.wandb_id, 
-        patch_size=16)
+        patch_size=16,
+        wandb_id=args.wandb_id,
+        checkpoint=args.checkpoint)
 
 if __name__ == '__main__':
     cuda = torch.cuda.is_available()
