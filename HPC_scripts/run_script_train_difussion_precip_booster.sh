@@ -20,10 +20,9 @@ module load netcdf4-python/1.5.7
 source ../sc_venv_template/venv/bin/activate
 
 
-save_dir=../results/exp_20230628_diffusion_lr
-train_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/train
-val_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/val
-
+save_dir=../results/exp_20230828_diffusion
+train_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train
+val_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/val
 epochs=20
 model_type=diffusion
 

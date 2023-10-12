@@ -49,7 +49,7 @@ def main():
     #some parameters for diffusion models
     if args.model_type == "diffusion":
         diffusion = True
-        conditional = False
+        conditional = True
         if not conditional:
             print("This is a un-conditional diffusion models!")
     else:
@@ -63,7 +63,16 @@ def main():
     netG, _ = get_model(args.model_type, args.dataset_type, img_size, n_channels, upscale)
 
 
-    model = BuildModel(netG, diffusion=diffusion, conditional=conditional)
+    hparams =  {"G_lossfn_type": "l2",
+              "G_optimizer_type": "adam",
+               "G_optimizer_lr": 5.e-04,
+                "G_optimizer_betas":[0.9, 0.999],
+                "G_optimizer_wd": 5.e-04,
+                "timesteps":200,
+                "conditional": True,
+                "diffusion":True}
+
+    model = BuildModel(netG, diffusion=diffusion, conditional=conditional, hparams = hparams)
 
     test_loader = create_loader(file_path=args.test_dir,
                                 mode="test",
@@ -81,7 +90,7 @@ def main():
     vars_out_patches_max  = stat_data['yw_hourly_tar_max']
 
     with torch.no_grad():
-        model.netG.load_state_dict(torch.load(args.checkpoint))#['model_state_dict']
+        model.netG.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])#['model_state_dict']
         idx = 0
         input_list = []
         pred_list = []
@@ -129,10 +138,14 @@ def main():
                     x_in = model.L
                 else:
                     x_in = None
-                samples = gd.sample(image_size=image_size, batch_size=batch_size, 
-                                    channels=n_channels+1, x_in=x_in)
+
+                samples = gd.sample(image_size=image_size, 
+                                    batch_size=batch_size, 
+                                    channels=n_channels+1, 
+                                    x_in=x_in)
+    
                 #chose the last channle and last varialbe (precipitation)
-                sample_last = samples[-1]  * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                sample_last = samples[-1]  * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 preds = np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
@@ -146,15 +159,15 @@ def main():
                 # print("the shape of the output",model.E.cpu().numpy().shape)
                 # print("max values", np.max(model.E.cpu().numpy()))
                 # print("min values", np.min(model.E.cpu().numpy()))
-                #preds = model.E.cpu().numpy()
+                preds = model.E.cpu().numpy()
                 #np.log(outputs_nparray+self.k)-np.log(self.k)
-                preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                preds = np.exp(preds+np.log(args.k))-args.k
+                #preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                #preds = np.exp(preds+np.log(args.k))-args.k
   
                 #Get the groud truth values
-                #ref = model.H.cpu().numpy()
-                ref = model.H.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                ref = np.exp(ref+np.log(args.k))-args.k
+                ref = model.H.cpu().numpy()
+                #ref = model.H.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                #ref = np.exp(ref+np.log(args.k))-args.k
 
             ref_list.append(ref)
             pred_list.append(preds)   
