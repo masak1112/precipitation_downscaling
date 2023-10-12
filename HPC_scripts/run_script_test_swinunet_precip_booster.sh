@@ -2,9 +2,9 @@
 #SBATCH --account=deepacf
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=train-test.%j
-#SBATCH --error=train-test.%j
-#SBATCH --time=00:20:00
+#SBATCH --output=train-swinir-test.%j
+#SBATCH --error=train-swinir-test.%j
+#SBATCH --time=00:40:00
 #SBATCH --gres=gpu:1
 #SBATCH --partition=develbooster
 #SBATCH --mail-type=ALL
@@ -18,13 +18,13 @@ module load xarray/0.20.1
 module load netcdf4-python/1.5.7
 source ../sc_venv_template/venv/bin/activate
 
-train_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/train
-test_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/test
-checkpoint_dir=../results/exp_20230319_swinunet_remove_last_batch/341980_G.pth
-save_dir=../results/exp_20230319_swinunet_remove_last_batch_test
+train_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train/
+test_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/test
+checkpoint_dir=../results/exp_20230824_epoch20_repeat2_n8_small_domain503_lr_multisteps/15660_G.pth
+save_dir=../results/exp_20230824_epoch20_repeat2_n8_small_domain503_lr_multisteps_postprocess
 
 
-model_type=swinUnet
+model_type=swinir
 
 python ../main_scripts/main_test.py --test_dir ${test_dir} --stat_dir ${train_dir} --checkpoint_dir ${checkpoint_dir}  --save_dir ${save_dir} --model_type ${model_type} > vis.output
   

@@ -16,13 +16,15 @@ module load Stages/2022 GCCcore/.11.2.0 dask/2021.9.1
 module load PyTorch/1.11-CUDA-11.5
 module load torchvision/0.12.0-CUDA-11.5
 module load xarray/0.20.1
-module load netcdf4-python/1.5.7
 source ../sc_venv_template/venv/bin/activate
+
+
+
 
 train_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/train
 test_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/test
-checkpoint_dir=../results/exp_20230421_epoch20_repeat2/341980_G.pth
-save_dir=../results/exp_20230421_epoch20_repoeat_postprocess_repeat2/
+checkpoint_dir=../results/exp_20230421_epoch20_repeat2_n4/341980_G.pth
+save_dir=../results/exp_20230421_epoch20_repeat2_n4_postproces/
 
 model_type=unet
 

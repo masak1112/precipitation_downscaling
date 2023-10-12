@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --output=train-swinUnet-out.%j
 #SBATCH --error=train-swinUnet-err.%j
-#SBATCH --time=23:50:00
+#SBATCH --time=10:50:00
 #SBATCH --gres=gpu:1
 #SBATCH --partition=booster
 #SBATCH --mail-type=ALL
@@ -17,9 +17,9 @@ module load torchvision/0.12.0-CUDA-11.5
 module load xarray/0.20.1
 source ../sc_venv_template/venv/bin/activate
 
-train_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/train
-val_dir=/p/home/jusers/gong1/juwels/scratch_bing/datasets/precip_dataset/val
-save_dir=../results/exp_20230319_swinunet_remove_last_batch/
+train_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train
+val_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/val
+save_dir=../results/exp_20231010_swinunet/
 
 
 epochs=20

@@ -13,6 +13,7 @@
 module purge
 module load Stages/2022 GCCcore/.11.2.0 dask/2021.9.1
 module load PyTorch/1.11-CUDA-11.5
+module load torchvision/0.12.0-CUDA-11.5
 module load xarray/0.20.1
 source ../sc_venv_template/venv/bin/activate
 

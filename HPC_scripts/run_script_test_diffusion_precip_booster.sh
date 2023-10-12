@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --output=test-diffusion-out.%j
 #SBATCH --error=test-diffusion-err.%j
-#SBATCH --time=00:40:00
+#SBATCH --time=01:40:00
 #SBATCH --gres=gpu:1
 #SBATCH --partition=develbooster
 #SBATCH --mail-type=ALL
