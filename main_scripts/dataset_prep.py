@@ -13,7 +13,6 @@ import torch
 import numpy as np
 import pathlib
 import math
-import torchvision
 import os
 import json
 import gc
@@ -101,7 +100,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         if local:
             self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list  = self.process_netcdf_local(files)
         else:
-
             self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list  = self.process_netcdf(files)
         print('self.times_patches_list: {}'.format(self.times_patches_list))
         stat_file = os.path.join(stat_path, "statistics.json")
@@ -134,9 +132,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         
         self.n_samples = len(self.vars_in_patches_list)
         #print("var_out size",self.vars_out_patches_list)
-
-        self.idx_perm = self.shuffle() 
-        #self.idx_perm = np.arange(1, self.n_samples)
+        
+        if self.mode == "test":
+            self.idx_perm = self.shuffle() 
+        else:
+            self.idx_perm = np.arange(1, self.n_samples)
         
     def save_stats(self):
         output_file = os.path.join(self.stat_path, "statistics.json")
@@ -192,10 +192,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         
         # log-transform -> log(x+k)-log(k)
                 # log-transform -> log(x+k)-log(k)
-        inputs_nparray[self.prcp_indexes] = np.log(inputs_nparray[self.prcp_indexes]+self.k)-np.log(self.k)
+        inputs_nparray[self._prcp_indexes] = np.log(inputs_nparray[self._prcp_indexes]+self.k)-np.log(self.k)
         outputs_nparray = np.log(outputs_nparray+self.k)-np.log(self.k)
         print('inputs_nparray shape: {}'.format(inputs_nparray.shape))
-        print('inputs_nparray[self.prcp_indexes] shape: {}'.format(inputs_nparray[self.prcp_indexes].shape))
+        print('inputs_nparray[self._prcp_indexes] shape: {}'.format(inputs_nparray[self._prcp_indexes].shape))
 
         da_in = torch.from_numpy(inputs_nparray)
         da_out = torch.from_numpy(outputs_nparray)
@@ -293,10 +293,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         outputs_nparray = output.to_array(dim = "variables").squeeze().values.astype(np.float32)
         
         # log-transform -> log(x+k)-log(k)
-        inputs_nparray[self.prcp_indexes] = np.log(inputs_nparray[self.prcp_indexes]+self.k)-np.log(self.k)
+        inputs_nparray[self._prcp_indexes] = np.log(inputs_nparray[self._prcp_indexes]+self.k)-np.log(self.k)
         outputs_nparray = np.log(outputs_nparray+self.k)-np.log(self.k)
         print('inputs_nparray shape: {}'.format(inputs_nparray.shape))
-        print('inputs_nparray[self.prcp_indexes] shape: {}'.format(inputs_nparray[self.prcp_indexes].shape))
+        print('inputs_nparray[self._prcp_indexes] shape: {}'.format(inputs_nparray[self._prcp_indexes].shape))
 
         da_in = torch.from_numpy(inputs_nparray)
         da_out = torch.from_numpy(outputs_nparray)
@@ -304,7 +304,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         gc.collect()
         times = inputs["time"].values  # get the timestamps
         times = np.transpose(np.stack([dt["time"].dt.year,dt["time"].dt.month,dt["time"].dt.day,dt["time"].dt.hour]))        
-    
+
         print("Original input shape:", da_in.shape)
 
         no_nan_idx = []
