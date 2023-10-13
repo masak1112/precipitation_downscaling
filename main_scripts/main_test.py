@@ -49,12 +49,8 @@ def main():
     #some parameters for diffusion models
     if args.model_type == "diffusion":
         diffusion = True
-        conditional = True
-        if not conditional:
-            print("This is a un-conditional diffusion models!")
     else:
         diffusion = False
-        conditional = False
 
     n_channels, upscale, img_size = get_data_info(args.dataset_type, patch_size=16)
 
@@ -62,7 +58,7 @@ def main():
 
     netG, _ = get_model(args.model_type, args.dataset_type, img_size, n_channels, upscale)
 
-
+    #default parameters
     hparams =  {"G_lossfn_type": "l2",
               "G_optimizer_type": "adam",
                "G_optimizer_lr": 5.e-04,
@@ -70,14 +66,15 @@ def main():
                 "G_optimizer_wd": 5.e-04,
                 "timesteps":200,
                 "conditional": True,
-                "diffusion":True}
+                "diffusion":diffusion}
 
-    model = BuildModel(netG, diffusion=diffusion, conditional=conditional, hparams = hparams)
+    model = BuildModel(netG, diffusion=diffusion, conditional=True, hparams=hparams)
 
     test_loader = create_loader(file_path=args.test_dir,
                                 mode="test",
                                 stat_path=args.stat_dir)
     
+    #Get and load the statistics information from the training directory for denormalisation
     stat_file = os.path.join(args.stat_dir, "statistics.json")
     print("The statsitics json files is opened from", stat_file)
     
@@ -89,91 +86,76 @@ def main():
     vars_out_patches_min = stat_data['yw_hourly_tar_min']
     vars_out_patches_max  = stat_data['yw_hourly_tar_max']
 
-    with torch.no_grad():
-        model.netG.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])#['model_state_dict']
-        idx = 0
-        input_list = []
-        pred_list = []
-        ref_list = []
-        cidx_list = []
-        times_list = []
-        noise_pred_list = []
-        all_sample_list = [] #this is ony for difussion model inference
-        hr_list = []
-        lats_list = []
-        lons_list = []
-        for i, test_data in enumerate(test_loader):
-            idx += 1
-            batch_size = test_data["L"].shape[0]
-            cidx_temp = test_data["idx"]
-            times_temp = test_data["T"]
-            lats = test_data["lats"].cpu().numpy()
-            lons = test_data["lons"].cpu().numpy()
-            cidx_list.append(cidx_temp.cpu().numpy())
-            times_list.append(times_temp.cpu().numpy())
-            model.feed_data(test_data)
-            #we must place calculate the shape of input here, due to for diffussion model, 
-            #The L is upsampling to higher resolution before feed into the model through 'feed_data' function
-            image_size = model.L.shape[2]
 
-            #Get the low resolution inputs
-            input_vars = test_data["L"]
-            input_temp = input_vars.cpu().numpy()
-            #input_temp = np.squeeze(input_vars[:,-1,:,:])*vars_in_patches_std+vars_in_patches_mean
-            #input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+    #Diffusion model
 
-            input_list.append(input_temp)
-            lats_list.append(lats)
-            lons_list.append(lons)
-     
+    if args.model_type == "diffusion":
             
-            model.netG_forward()
-            
-            if args.model_type == "diffusion":
-                gd = GaussianDiffusion(conditional=conditional, timesteps=200, model=model.netG)
+        with torch.no_grad():
+            model.netG.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])
+            idx = 0
+            input_list = []  #low-resolution inputs
+            pred_list = []   # prediction high-resolution results
+            ref_list = []    # true noise
+            cidx_list = []   # image index
+            times_list = []  #timestamps
+            noise_pred_list = [] # predicted noise
+            all_sample_list = [] #this is ony for difussion model inference
+            hr_list = []  # ground truth images
+            lats_list = [] #lats
+            lons_list = [] #lons
+            for i, test_data in enumerate(test_loader):
+                idx += 1
+                batch_size = test_data["L"].shape[0]
+                cidx_temp = test_data["idx"]
+                times_temp = test_data["T"]
+                lats = test_data["lats"].cpu().numpy()
+                lons = test_data["lons"].cpu().numpy()
+                cidx_list.append(cidx_temp.cpu().numpy())
+                times_list.append(times_temp.cpu().numpy())
+                model.feed_data(test_data)
+                #we must place calculate the shape of input here, due to for diffussion model, 
+                #The L is upsampling to higher resolution before feed into the model through 'feed_data' function
+                image_size = model.L.shape[2]
+                #Get the low resolution inputs
+                input_vars = test_data["L"]
+                input_temp = input_vars.cpu().numpy()
+                input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min )+ vars_in_patches_min 
+                input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+ 
+
+                model.netG_forward()
+                
+                gd = GaussianDiffusion(conditional=True, timesteps=200, model=model.netG)
                 #now, we only use the unconditional difussion model, meaning the inputs are only noise.
                 #This is the first test, later, we will figure out how to use conditioanl difussion model.
                 print("Start reverse process")
-                if conditional:
-                    x_in = model.L
-                else:
-                    x_in = None
 
-                samples = gd.sample(image_size=image_size, 
-                                    batch_size=batch_size, 
-                                    channels=n_channels+1, 
-                                    x_in=x_in)
+                x_in = model.L
     
+                samples = gd.sample(image_size=image_size, 
+                                        batch_size=batch_size, 
+                                        channels=n_channels+1, 
+                                        x_in=x_in)
+        
                 #chose the last channle and last varialbe (precipitation)
-                sample_last = samples[-1]  * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                sample_last = samples[-1] * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 preds = np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise
                 noise_pred = model.E.cpu().numpy() #predict the noise
-                noise_pred_list.append(noise_pred)
+                
                 hr = np.exp(model.hr.cpu().numpy()+np.log(args.k))-args.k
-            else:
-                #Get the prediction values
-                # print("the shape of the output",model.E.cpu().numpy().shape)
-                # print("max values", np.max(model.E.cpu().numpy()))
-                # print("min values", np.min(model.E.cpu().numpy()))
-                preds = model.E.cpu().numpy()
-                #np.log(outputs_nparray+self.k)-np.log(self.k)
-                #preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                #preds = np.exp(preds+np.log(args.k))-args.k
-  
-                #Get the groud truth values
-                ref = model.H.cpu().numpy()
-                #ref = model.H.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                #ref = np.exp(ref+np.log(args.k))-args.k
-
-            ref_list.append(ref)
-            pred_list.append(preds)   
-            if args.model_type == "diffusion":
-                hr_list.append(hr)
-
+                
+                input_list.append(input_temp) #ground truth images
+                lats_list.append(lats)
+                lons_list.append(lons)
+                ref_list.append(ref)  #true noise
+                noise_pred_list.append(noise_pred) # predicted noise
+                pred_list.append(preds)  #predicted high-resolution images
+                hr_list.append(hr) #grount truth
         
         cidx = np.squeeze(np.concatenate(cidx_list,0))
         times = np.concatenate(times_list,0)
@@ -182,13 +164,8 @@ def main():
         intL = np.concatenate(input_list,0)
         lats_hr = np.concatenate(lats_list, 0)
         lons_hr = np.concatenate(lons_list, 0)
-        print("lats_list shape", lons_hr.shape)
-  
-
-        if args.model_type == "diffusion":
-            hr_list = np.concatenate(hr_list,0)
-            print("len of hr_list",len(hr_list))
-        
+        hr_list = np.concatenate(hr_list,0)
+                
         datetimes = []
         for i in range(times.shape[0]):
             times_str = str(times[i][0])+str(times[i][1]).zfill(2)+str(times[i][2]).zfill(2)+str(times[i][3]).zfill(2)
@@ -202,10 +179,10 @@ def main():
             intL = intL[:, 0,: ,:]
         print("shape of ref", ref.shape)
 
-        if args.model_type == "diffusion":
-            noiseP = np.concatenate(noise_pred_list,0)
-            if len(noiseP.shape) == 4:
-                noiseP = noiseP[:, 0, :, :]
+
+        noiseP = np.concatenate(noise_pred_list,0)
+        if len(noiseP.shape) == 4:
+            noiseP = noiseP[:, 0, :, :]
             ds = xr.Dataset(
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
@@ -221,13 +198,82 @@ def main():
                     pitch_idx = cidx,
                     ),
                 attrs = dict(description = "Precipitation downscaling data."),
-                )
-        else:
+                    )
+            
+    else:
+            with torch.no_grad():
+                model.netG.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])
+                idx = 0
+                input_list = []  #low-resolution inputs
+                pred_list = []   # prediction high-resolution results
+                cidx_list = []   # image index
+                times_list = []  #timestamps
+                hr_list = []  # ground truth images
+                lats_list = [] #lats
+                lons_list = [] #lons
+                for i, test_data in enumerate(test_loader):
+                    idx += 1
+                    batch_size = test_data["L"].shape[0]
+                    cidx_temp = test_data["idx"]
+                    times_temp = test_data["T"]
+                    lats = test_data["lats"].cpu().numpy()
+                    lons = test_data["lons"].cpu().numpy()
+      
+                    model.feed_data(test_data)
+
+                    #Get the low resolution inputs
+                    input_vars = test_data["L"]
+                    input_temp = input_vars.cpu().numpy()
+                    input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min )+ vars_in_patches_min 
+                    input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+ 
+                    model.netG_forward()
+                    #Get the prediction values
+                    preds = model.E.cpu().numpy()
+                    preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    preds = np.exp(preds+np.log(args.k))-args.k
+
+                    #Get the groud truth values
+                    hr = model.H.cpu().numpy()
+                    hr = model.H.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    hr = np.exp(hr+np.log(args.k))-args.k
+
+                    
+                    lats_list.append(lats)
+                    lons_list.append(lons)
+                    cidx_list.append(cidx_temp.cpu().numpy())
+                    times_list.append(times_temp.cpu().numpy())
+                    input_list.append(input_temp) #ground truth images
+                    hr_list.append(hr) #grount truth
+                    pred_list.append(preds)  #predicted high-resolution images
+                
+                cidx = np.squeeze(np.concatenate(cidx_list,0))
+                times = np.concatenate(times_list,0)
+                pred = np.concatenate(pred_list,0)
+                intL = np.concatenate(input_list,0)
+                lats_hr = np.concatenate(lats_list, 0)
+                lons_hr = np.concatenate(lons_list, 0)
+                hr_list = np.concatenate(hr_list,0)
+               
+  
+                datetimes = []
+                for i in range(times.shape[0]):
+                    times_str = str(times[i][0])+str(times[i][1]).zfill(2)+str(times[i][2]).zfill(2)+str(times[i][3]).zfill(2)
+                    datetimes.append(datetime.strptime(times_str,'%Y%m%d%H'))
+
+            if len(pred.shape) == 4:
+                pred = pred[:, 0 , : ,:]
+            if len(intL.shape) == 4:
+                intL = intL[:, 0,: ,:]
+            if len(hr_list.shape) == 4:
+                hr_list = hr_list[:, 0,: ,:]
+
+
             ds = xr.Dataset(
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
-                    refe = (["time", "lat", "lon"], ref),
+                    refe = (["time", "lat", "lon"], hr_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                 ),
@@ -238,13 +284,13 @@ def main():
                 attrs = dict(description = "Precipitation downscaling data."),
                 )
 
-        os.makedirs(args.save_dir,exist_ok=True)
+            os.makedirs(args.save_dir,exist_ok=True)
 
-        # ds.to_netcdf(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+'.nc'))
-        months, datasets = zip(*ds.groupby("time.month"))
-        save_paths = [os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_{y}.nc') for y in months]
-        print('save_paths: {}'.format(save_paths))
-        xr.save_mfdataset(datasets, save_paths)
+    # ds.to_netcdf(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+'.nc'))
+    months, datasets = zip(*ds.groupby("time.month"))
+    save_paths = [os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_{y}.nc') for y in months]
+    print('save_paths: {}'.format(save_paths))
+    xr.save_mfdataset(datasets, save_paths)
         
 if __name__ == '__main__':
     cuda = torch.cuda.is_available()
