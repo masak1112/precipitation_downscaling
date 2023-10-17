@@ -71,8 +71,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
               "save_dir":save_dir, "type_net":type_net,
               "patch_size": patch_size, "checkpoint": checkpoint
               }
-    wandb.init(project="Precip_downscaling",reinit=True, id=id, dir=save_dir, config=config)
-    wandb.run.name = id
+
     type_net = type_net.lower() 
     
     #some parameters for diffusion models
@@ -151,6 +150,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                    "timesteps":200,
                    "diffusion": diffusion,
                    "conditional": False}
+        
         config.update(hparams)
         model = BuildModel(netG,
                            save_dir = save_dir,
@@ -160,6 +160,8 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                            checkpoint = checkpoint)
         
     #config.update(hparams)
+    wandb.init(project="Precip_downscaling",reinit=True, id=id, dir=save_dir, config=config)
+    wandb.run.name = id
     wandb.config.update(hparams)
     wandb.config.update({"lr":model.G_optimizer_lr})
     model.fit()

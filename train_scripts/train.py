@@ -28,6 +28,8 @@ cuda = True if torch.cuda.is_available() else False
 pname = "./logs/profile"
 
 
+
+
 class BuildModel:
     def __init__(self, netG,
                  save_dir    : str = "../results",
@@ -36,7 +38,7 @@ class BuildModel:
                  dataset_type: str = 'precipitation',
                  save_freq   : int = 1000,
                  checkpoint  : str = None,
-                 hparams    : dict = None,
+                 hparams     : dict = None,
                  **kwargs):
 
         """f
@@ -52,6 +54,7 @@ class BuildModel:
         self.netG = netG
 
         self.netG.to(device)
+
         #Get paramers
         self.hparams = dotdict(hparams)
         self.G_lossfn_type = self.hparams.G_lossfn_type
@@ -60,6 +63,7 @@ class BuildModel:
         self.G_optimizer_betas = self.hparams.G_optimizer_betas
         self.G_optimizer_wd = self.hparams.G_optimizer_wd
         self.epochs = self.hparams.epochs
+     
         self.diffusion = self.hparams.diffusion #: if enable diffusion, the "conditional"must be defined
 
         self.save_dir = save_dir
@@ -199,7 +203,7 @@ class BuildModel:
             else:
                 self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t)
 
-            self.H = noise #if using difussion, the output is not the prediction values, but the predicted noise
+            self.H = x_noisy #if using difussion, the output is not the prediction values, but the predicted noise
 
     # ----------------------------------------
     # update parameters and get loss

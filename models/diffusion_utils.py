@@ -16,7 +16,7 @@ __date__ = "2022-11-28"
 
 import torch
 import torch.nn.functional as F
-from torch import nn, einsum
+from torch import nn
 from tqdm import tqdm
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -59,6 +59,12 @@ def extract(a, t, x_shape):
 class GaussianDiffusion(nn.Module):
     def __init__(self, conditional=False, schedule_opt="linear", timesteps=200, model=None):
         super().__init__()
+        """
+        conditional : If conditional information is provide (given input variables)
+        schedule_opt: schedular option include "linear", "quad", "cosine","sigmoid"
+        timesteps.  : the noise steps
+        model       : the built diffusion model
+        """
         self.conditional = conditional
         self.model = model
         self.timesteps = timesteps
@@ -77,6 +83,7 @@ class GaussianDiffusion(nn.Module):
         self.set_new_noise_schedule()
 
     def set_new_noise_schedule(self):
+     
         alphas = 1. - self.betas
         # Returns the cumulative product of elements of input in the dimension dim
         alphas_cumprod = torch.cumprod(alphas, axis = 0)
@@ -90,8 +97,10 @@ class GaussianDiffusion(nn.Module):
         self.posterior_variance = self.betas * (1. - self.alphas_cumprod_prev) / (1. - alphas_cumprod)
 
 
-
     def q_sample(self, x_start, t, noise=None):
+        """
+        add noise 
+        """
         if noise is None:
             noise = torch.randn_like(x_start)
 
@@ -106,6 +115,9 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     def p_sample(self, x, t, t_index, condition_x=None):
+        """
+        x is the input for model (start noise image)
+        """
         betas_t = extract(self.betas, t, x.shape)
         sqrt_one_minus_alphas_cumprod_t = extract(
             self.sqrt_one_minus_alphas_cumprod, t, x.shape
@@ -116,14 +128,12 @@ class GaussianDiffusion(nn.Module):
         # Use our model (noise predictor) to predict the mean
         if condition_x is not None:
             # this is conditional diffussion
-            print("conditiona_x shape", condition_x.shape)
-            print("x shape is ", x.shape)
             x_recon = self.model(torch.cat([condition_x, x], dim=1), t)
         else:
             x_recon = self.model(x, t)
         model_mean = sqrt_recip_alphas_t * (
                 x - betas_t * x_recon / sqrt_one_minus_alphas_cumprod_t
-        )
+                )
         posterior_variance_t = extract(self.posterior_variance, t, x.shape)
         noise = torch.randn_like(x)
         # No noise when t == 0
@@ -137,7 +147,6 @@ class GaussianDiffusion(nn.Module):
     @torch.no_grad()
     def p_sample_loop(self, shape, x_in=None):
         #device = next(self.model.parameters()).device
-
         b = shape[0]
         img = torch.randn(shape, device = device)
         # start from pure noise (for each example in the batch)
@@ -162,10 +171,10 @@ class GaussianDiffusion(nn.Module):
                                     i, condition_x = x_in)
                 imgs.append(img)
             return imgs
-
+        
+    @torch.no_grad()
     def sample(self, image_size=160, batch_size=16, channels=3, x_in=None):
         if self.conditional:
-            print("images size in sample", image_size)
             return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in)
         else:
             return self.p_sample_loop(shape=(batch_size, channels, image_size, image_size))

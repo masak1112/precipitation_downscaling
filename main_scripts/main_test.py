@@ -143,12 +143,15 @@ def main():
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 preds = np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
+    
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
-                hr = np.exp(model.hr.cpu().numpy()+np.log(args.k))-args.k
+                hr = model.hr.cpu().numpy() * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                hr = np.exp(hr+np.log(args.k))-args.k
                 
+            
                 input_list.append(input_temp) #ground truth images
                 lats_list.append(lats)
                 lons_list.append(lons)
@@ -229,13 +232,11 @@ def main():
  
                     model.netG_forward()
                     #Get the prediction values
-                    preds = model.E.cpu().numpy()
                     preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     preds = np.exp(preds+np.log(args.k))-args.k
 
                     #Get the groud truth values
-                    hr = model.H.cpu().numpy()
-                    hr = model.H.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     hr = np.exp(hr+np.log(args.k))-args.k
 
                     
@@ -273,7 +274,7 @@ def main():
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
-                    refe = (["time", "lat", "lon"], hr_list),
+                    hr = (["time", "lat", "lon"], hr_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                 ),

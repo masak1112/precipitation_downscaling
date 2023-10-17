@@ -12,6 +12,12 @@ import math
 import torch
 from torch import nn,Tensor
 from einops import rearrange
+import random
+import numpy as np
+SEED = 0
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -24,14 +30,16 @@ class SinusoidalPositionEmbeddings(nn.Module):
         self.dim = dim
         assert self.dim % 2 == 0
 
-
-    def forward(self, time):
-        half_dim = self.dim // 2
-        embeddings = math.log(10000) / (half_dim - 1)
-        embeddings = torch.exp(torch.arange(half_dim, device=device) * -embeddings)
-        embeddings = time[:, None] * embeddings[None, :]
-        embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
-        return embeddings
+    #source of embedding https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/blob/master/model/sr3_modules/unet.py
+    def forward(self, noise_level):
+        count = self.dim // 2
+        step = torch.arange(count, dtype=noise_level.dtype,
+                            device=noise_level.device) / count
+        encoding = noise_level.unsqueeze(
+            1) * torch.exp(-math.log(1e4) * step.unsqueeze(0))
+        encoding = torch.cat(
+            [torch.sin(encoding), torch.cos(encoding)], dim=-1)
+        return encoding
 
 
 ### Building blocks
@@ -59,10 +67,12 @@ class Conv_Block(nn.Module):
         )
 
     def forward(self, x: Tensor, time_emb: Tensor = None)->Tensor:
-
+        #print("input in Conv_block shape is", x.shape) #the fist  conv block shape is: ([16, 1, 160, 160])
+        #print("time_embd in Conv_block shape is", time_emb.shape) #([16, 64)]
         condition = self.mlp(time_emb)
         condition = rearrange(condition, "b c -> b c 1 1")
         x = x + condition
+        #print("x shape after add condition",  x.shape)
         return self.conv_block(x)
 
 
@@ -85,12 +95,11 @@ class Conv_Block_N(nn.Module):
         self.block2 = Conv_Block(out_channels, out_channels, kernel_size=kernel_size,
                                bias=True, time_emb_dim = time_emb_dim)
 
-
     def forward(self, x, time_emb: Tensor = None):
+      
         h = self.block1(x, time_emb)
         h = self.block2(h, time_emb)
         return h
-
 
 
 class Encoder_Block(nn.Module):
@@ -115,7 +124,6 @@ class Encoder_Block(nn.Module):
         x = self.layer1(x, time_emb)
         e = self.maxpool_conv(x)
         return x, e
-
 
 
 class Decode_Block(nn.Module):
@@ -144,7 +152,7 @@ class UNet_diff(nn.Module):
     def __init__(self, img_size: int, n_channels:int, channels_start: int = 56, with_time_emb: bool=True):
         """
 
-        :param img_size             :  the dimension of the images
+        :param img_size        :  the dimension of the images
         :param n_channels      :  the channles of input images
         :param channels_start  :  the output channel number of the first convolution block
         :param with_time_emb   :  the time embedding
@@ -183,8 +191,8 @@ class UNet_diff(nn.Module):
         torch.nn.init.xavier_uniform(self.output .weight)
 
 
-    def forward(self, x:Tensor,time: Tensor=None)->Tensor:
-
+    def forward(self, x:Tensor,time: Tensor = torch.tensor(-1))->Tensor:
+        
         t = self.time_mlp(time) if exists(self.time_mlp) else None
 
         s1, e1 = self.down1(x, t)
