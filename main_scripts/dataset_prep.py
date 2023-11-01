@@ -33,13 +33,13 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  patch_size     : int = 16,
                  vars_in        : list = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in",
                                   "u700_in","v700_in","yw_hourly_in"],
-                 vars_out: list = ["yw_hourly_tar"], 
-                 sf: int = 10,
-                 seed: int = 1234, 
-                 k: float = 0.01, 
-                 mode: str = "train",
-                 stat_path: str = None,
-                 local: bool = False):
+                 vars_out       : list = ["yw_hourly_tar"], 
+                 sf             : int = 10,
+                 seed           : int = 1234, 
+                 k              : float = 0.01, 
+                 mode           : str = "train",
+                 stat_path      : str = None,
+                 local          : bool = False):
         """
         file_path : the path to the directory of .nc files
         vars_in   : the list contains the input variable names

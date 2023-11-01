@@ -57,7 +57,7 @@ def extract(a, t, x_shape):
 
 
 class GaussianDiffusion(nn.Module):
-    def __init__(self, conditional=False, schedule_opt="linear", timesteps=200, model=None):
+    def __init__(self, conditional=True, schedule_opt="linear", timesteps=200, model=None):
         super().__init__()
         """
         conditional : If conditional information is provide (given input variables)
@@ -128,6 +128,7 @@ class GaussianDiffusion(nn.Module):
         # Use our model (noise predictor) to predict the mean
         if condition_x is not None:
             # this is conditional diffussion
+            print("Conditional x is not None")
             x_recon = self.model(torch.cat([condition_x, x], dim=1), t)
         else:
             x_recon = self.model(x, t)
@@ -176,5 +177,4 @@ class GaussianDiffusion(nn.Module):
     def sample(self, image_size=160, batch_size=16, channels=3, x_in=None):
         if self.conditional:
             return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in)
-        else:
-            return self.p_sample_loop(shape=(batch_size, channels, image_size, image_size))
+

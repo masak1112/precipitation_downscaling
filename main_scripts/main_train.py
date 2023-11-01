@@ -147,9 +147,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                    "G_optimizer_lr": 5.e-04,
                   "G_optimizer_betas":[0.9, 0.999],
                   "G_optimizer_wd": 5.e-04,
-                   "timesteps":200,
-                   "diffusion": diffusion,
-                   "conditional": False}
+                   "diffusion": diffusion}
         
         config.update(hparams)
         model = BuildModel(netG,

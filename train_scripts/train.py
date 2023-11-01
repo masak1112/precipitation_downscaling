@@ -63,7 +63,6 @@ class BuildModel:
         self.G_optimizer_betas = self.hparams.G_optimizer_betas
         self.G_optimizer_wd = self.hparams.G_optimizer_wd
         self.epochs = self.hparams.epochs
-     
         self.diffusion = self.hparams.diffusion #: if enable diffusion, the "conditional"must be defined
 
         self.save_dir = save_dir
@@ -197,11 +196,8 @@ class BuildModel:
             gd = GaussianDiffusion(model = self.netG, timesteps = 200, conditional=self.conditional)
             x_noisy = gd.q_sample(x_start = self.H, t = t, noise = noise)
     
-            if not self.conditional:
-                self.E = self.netG(x_noisy, t)
-
-            else:
-                self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t)
+  
+            self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t)
 
             self.H = x_noisy #if using difussion, the output is not the prediction values, but the predicted noise
 
