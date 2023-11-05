@@ -194,6 +194,7 @@ class UNet_diff(nn.Module):
     def forward(self, x:Tensor,time: Tensor = torch.tensor(-1))->Tensor:
         
         t = self.time_mlp(time) if exists(self.time_mlp) else None
+        print("t in Unet is ",t)
 
         s1, e1 = self.down1(x, t)
         s2, e2 = self.down2(e1, t)

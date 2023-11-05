@@ -115,7 +115,7 @@ class Encoder_Block(nn.Module):
         super().__init__()
 
         if l_large:
-            self.layer1 = Conv_Block_N(in_channels, out_channels, n=2)
+            self.layer1 = Conv_Block_N(in_channels, out_channels, n=8)
         else:
             self.layer1 = Conv_Block_N(in_channels, out_channels, n=1)
 
@@ -161,7 +161,6 @@ class UNet(nn.Module):
         self.up1 = Decode_Block(channels_start * 8, channels_start * 4)
         self.up2 = Decode_Block(channels_start * 4, channels_start * 2)
         self.up3 = Decode_Block(channels_start * 2, channels_start)
-
         self.output = nn.Conv2d(channels_start, 1, kernel_size=1, bias=True)
         torch.nn.init.xavier_uniform(self.output.weight)
 

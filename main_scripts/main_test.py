@@ -94,16 +94,18 @@ def main():
         with torch.no_grad():
             model.netG.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])
             idx = 0
-            input_list = []  #low-resolution inputs
-            pred_list = []   # prediction high-resolution results
-            ref_list = []    # true noise
-            cidx_list = []   # image index
-            times_list = []  #timestamps
+            input_list = []      #low-resolution inputs
+            pred_list = []       # prediction high-resolution results
+            ref_list = []        # true noise
+            cidx_list = []       # image index
+            times_list = []      #timestamps
             noise_pred_list = [] # predicted noise
             all_sample_list = [] #this is ony for difussion model inference
-            hr_list = []  # ground truth images
-            lats_list = [] #lats
-            lons_list = [] #lons
+            hr_list = []         # ground truth images
+            lats_list = []       #lats
+            lons_list = []       #lons
+            pred_first_list = []
+            pred_100_list = []
             for i, test_data in enumerate(test_loader):
                 idx += 1
                 batch_size = test_data["L"].shape[0]
@@ -120,7 +122,7 @@ def main():
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
                 input_temp = input_vars.cpu().numpy()
-                input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min )+ vars_in_patches_min 
+                input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
                 input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
 
@@ -137,12 +139,17 @@ def main():
                                         batch_size=batch_size, 
                                         channels=n_channels+1, 
                                         x_in=x_in)
-        
+                print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
-                sample_last = samples[-1] * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                sample_last = samples[-1] *(vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                sample_first = samples[0].cpu().numpy()
+                sample_100 = samples[100].cpu().numpy()
+                #
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
-                preds = np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
+                #preds = sample_last.cpu().numpy()
+    
+                preds =np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
     
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise
@@ -158,16 +165,23 @@ def main():
                 ref_list.append(ref)  #true noise
                 noise_pred_list.append(noise_pred) # predicted noise
                 pred_list.append(preds)  #predicted high-resolution images
+                pred_first_list.append(sample_first)
+                pred_100_list.append(sample_100)
                 hr_list.append(hr) #grount truth
         
         cidx = np.squeeze(np.concatenate(cidx_list,0))
         times = np.concatenate(times_list,0)
+        pred = np.concatenate(pred_list,0)
+        pred_first = np.concatenate(pred_first_list,0)
+        pred_100 = np.concatenate(pred_100_list,0)
         pred = np.concatenate(pred_list,0)
         ref = np.concatenate(ref_list,0)
         intL = np.concatenate(input_list,0)
         lats_hr = np.concatenate(lats_list, 0)
         lons_hr = np.concatenate(lons_list, 0)
         hr_list = np.concatenate(hr_list,0)
+
+        print("pred_first shape", pred_first.shape)
                 
         datetimes = []
         for i in range(times.shape[0]):
@@ -176,6 +190,8 @@ def main():
 
         if len(pred.shape) == 4:
             pred = pred[:, 0 , : ,:]
+            pred_100 = pred_100[:, 0 , : ,:]
+            pred_first = pred_first[:, 0 , : ,:]
         if len(ref.shape) == 4:
             ref = ref[:, 0,: ,:]
         if len(intL.shape) == 4:
@@ -190,6 +206,8 @@ def main():
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
+                    fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
+                    fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
                     hr = (["time", "lat", "lon"], hr_list),
@@ -285,7 +303,7 @@ def main():
                 attrs = dict(description = "Precipitation downscaling data."),
                 )
 
-            os.makedirs(args.save_dir,exist_ok=True)
+    os.makedirs(args.save_dir,exist_ok=True)
 
     # ds.to_netcdf(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+'.nc'))
     months, datasets = zip(*ds.groupby("time.month"))

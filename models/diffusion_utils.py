@@ -18,6 +18,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from tqdm import tqdm
+import numpy as np
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -139,10 +140,10 @@ class GaussianDiffusion(nn.Module):
         noise = torch.randn_like(x)
         # No noise when t == 0
         if t_index == 0:
-            return model_mean
+            return torch.clamp(model_mean, min=0,max=0.99 )
         else:
             # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise
+            return torch.clamp(model_mean + torch.sqrt(posterior_variance_t)* noise, min=0,max=0.99)
 
 
     @torch.no_grad()
@@ -174,7 +175,7 @@ class GaussianDiffusion(nn.Module):
             return imgs
         
     @torch.no_grad()
-    def sample(self, image_size=160, batch_size=16, channels=3, x_in=None):
+    def sample(self, image_size=160, batch_size=16, x_in=None):
         if self.conditional:
             return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in)
 
