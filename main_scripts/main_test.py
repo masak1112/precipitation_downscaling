@@ -106,6 +106,8 @@ def main():
             lons_list = []       #lons
             pred_first_list = []
             pred_100_list = []
+            pred_50_list = []
+            pred_150_list = []
             for i, test_data in enumerate(test_loader):
                 idx += 1
                 batch_size = test_data["L"].shape[0]
@@ -121,12 +123,13 @@ def main():
                 image_size = model.L.shape[2]
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
-                input_temp = input_vars.cpu().numpy()
-                input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
-                input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+                input_temp = input_vars[:,-1,:,:].cpu().numpy()
+                #input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
+                #input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
 
-                model.netG_forward()
+                with torch.no_grad():
+                    model.netG_forward(i)
                 
                 gd = GaussianDiffusion(conditional=True, timesteps=200, model=model.netG)
                 #now, we only use the unconditional difussion model, meaning the inputs are only noise.
@@ -136,20 +139,22 @@ def main():
                 x_in = model.L
     
                 samples = gd.sample(image_size=image_size, 
-                                        batch_size=batch_size, 
-                                        channels=n_channels+1, 
-                                        x_in=x_in)
+                                    batch_size=batch_size, 
+                                    x_in=x_in)
                 print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
-                sample_last = samples[-1] *(vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                preds = samples[-1].cpu().numpy()
+                #*(vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 sample_first = samples[0].cpu().numpy()
+                sample_50 = samples[50].cpu().numpy()
                 sample_100 = samples[100].cpu().numpy()
-                #
+                sample_150 = samples[150].cpu().numpy()
+                
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 #preds = sample_last.cpu().numpy()
     
-                preds =np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
+                #preds =np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
     
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise
@@ -167,13 +172,17 @@ def main():
                 pred_list.append(preds)  #predicted high-resolution images
                 pred_first_list.append(sample_first)
                 pred_100_list.append(sample_100)
+                pred_50_list.append(sample_50)
+                pred_150_list.append(sample_150)
                 hr_list.append(hr) #grount truth
         
         cidx = np.squeeze(np.concatenate(cidx_list,0))
         times = np.concatenate(times_list,0)
         pred = np.concatenate(pred_list,0)
         pred_first = np.concatenate(pred_first_list,0)
+        pred_50 = np.concatenate(pred_50_list,0)
         pred_100 = np.concatenate(pred_100_list,0)
+        pred_150 = np.concatenate(pred_150_list,0)
         pred = np.concatenate(pred_list,0)
         ref = np.concatenate(ref_list,0)
         intL = np.concatenate(input_list,0)
@@ -190,16 +199,22 @@ def main():
 
         if len(pred.shape) == 4:
             pred = pred[:, 0 , : ,:]
+            pred_50 = pred_50[:, 0 , : ,:]
             pred_100 = pred_100[:, 0 , : ,:]
+            pred_150 = pred_150[:, 0 , : ,:]
             pred_first = pred_first[:, 0 , : ,:]
         if len(ref.shape) == 4:
             ref = ref[:, 0,: ,:]
         if len(intL.shape) == 4:
             intL = intL[:, 0,: ,:]
         print("shape of ref", ref.shape)
+        if len(hr_list.shape) == 4:
+            hr_list = hr_list[:, 0,: ,:]
+        print("shape of hr_list",hr_list.shape)
 
 
         noiseP = np.concatenate(noise_pred_list,0)
+
         if len(noiseP.shape) == 4:
             noiseP = noiseP[:, 0, :, :]
             ds = xr.Dataset(
@@ -207,7 +222,9 @@ def main():
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
                     fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
+                    fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
                     fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
+                    fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
                     hr = (["time", "lat", "lon"], hr_list),

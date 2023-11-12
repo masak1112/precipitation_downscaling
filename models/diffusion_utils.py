@@ -35,8 +35,8 @@ def cosine_beta_schedule(timesteps, s=0.008):
     return torch.clip(betas, 0.0001, 0.9999)
 
 def linear_beta_schedule(timesteps):
-    beta_start = 0.0001
-    beta_end = 0.02
+    beta_start = 0.00001
+    beta_end = 0.01
     return torch.linspace(beta_start, beta_end, timesteps)
 
 def quadratic_beta_schedule(timesteps):
@@ -51,6 +51,7 @@ def sigmoid_beta_schedule(timesteps):
     return torch.sigmoid(betas) * (beta_end - beta_start) + beta_start
 
 def extract(a, t, x_shape):
+    print("t",t) 
     batch_size = t.shape[0]
     a = a.to(device)
     out = a.gather(-1, t.to(device))
@@ -86,14 +87,16 @@ class GaussianDiffusion(nn.Module):
     def set_new_noise_schedule(self):
      
         alphas = 1. - self.betas
+        print("alpha", alphas)
         # Returns the cumulative product of elements of input in the dimension dim
         alphas_cumprod = torch.cumprod(alphas, axis = 0)
+        print("alphascumprod", alphas_cumprod ) #[1,0,8]
         self.alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value = 1.0)
         self.sqrt_recip_alphas = torch.sqrt(1.0 / alphas)
 
         # calculations for diffusion q(x_t | x_{t-1}) and others
-        self.sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
-        self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
+        self.sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod) 
+        self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod) #[0.003,0,4]
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         self.posterior_variance = self.betas * (1. - self.alphas_cumprod_prev) / (1. - alphas_cumprod)
 
@@ -104,8 +107,11 @@ class GaussianDiffusion(nn.Module):
         """
         if noise is None:
             noise = torch.randn_like(x_start)
-
+        
+        #print("sqrt_alphas_cumprod ",self.sqrt_alphas_cumprod )#[0.9, 1]
         sqrt_alphas_cumprod_t = extract(self.sqrt_alphas_cumprod, t, x_start.shape)
+        #print("sqrt_alphas_cumprod_t",sqrt_alphas_cumprod_t)
+        #print("self.sqrt_one_minus_alphas_cumprod", self.sqrt_one_minus_alphas_cumprod) #[0.003,0,4]
         sqrt_one_minus_alphas_cumprod_t = extract(
             self.sqrt_one_minus_alphas_cumprod, t, x_start.shape
         )
@@ -138,12 +144,13 @@ class GaussianDiffusion(nn.Module):
                 )
         posterior_variance_t = extract(self.posterior_variance, t, x.shape)
         noise = torch.randn_like(x)
+       
         # No noise when t == 0
         if t_index == 0:
-            return torch.clamp(model_mean, min=0,max=0.99 )
+            return model_mean
         else:
             # Algorithm 2 line 4:
-            return torch.clamp(model_mean + torch.sqrt(posterior_variance_t)* noise, min=0,max=0.99)
+            return model_mean + torch.sqrt(posterior_variance_t)* noise
 
 
     @torch.no_grad()

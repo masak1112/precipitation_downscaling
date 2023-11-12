@@ -19,7 +19,7 @@ from models.diffusion_utils import GaussianDiffusion
 from models.network_unet import Upsampling
 from utils.data_loader import create_loader
 from utils.other_utils import dotdict
-
+import pickle
 
 #SBATCH --mail-ty
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -176,7 +176,7 @@ class BuildModel:
     # ----------------------------------------
     # feed L to netG
     # ----------------------------------------
-    def netG_forward(self):
+    def netG_forward(self,idx):
 
         if not self.diffusion:
             self.E = self.netG(self.L) #[:,0,:,:]
@@ -184,20 +184,37 @@ class BuildModel:
             #print("The min of prediction", np.min(self.E.detach().cpu().numpy()))
             #print("The max of prediction", np.max(self.E.detach().cpu().numpy()))
         else:
-            self.hr = self.H
+            
             if len(self.H.shape) == 3:
                 self.H = torch.unsqueeze(self.H, dim = 1)
-
+            
+            self.hr = self.H
             h_shape = self.H.shape
-            noise = torch.randn_like(self.H)
+            print("h_shape",h_shape)
+
             
             t = torch.randint(0, 200, (h_shape[0],), device = device).long()
-    
+            print("t",t)
+          
             gd = GaussianDiffusion(model = self.netG, timesteps = 200, conditional=self.conditional)
-            x_noisy = gd.q_sample(x_start = self.H, t = t, noise = noise)
-            print("x_nosey shape", x_noisy.shape)
-    
-  
+            x_noisy = gd.q_sample(x_start = self.hr, t = t)
+            print("x_nosey shape", x_noisy.shape) #[16,1,160,160][batch_size,chanel,img,img]
+
+            #save noise images
+            if idx < 3:
+                examples = [self.hr.detach().cpu().numpy()]
+                with open('example_5132_idx_{}_t_0.pkl'.format(idx),'wb') as f:
+                    pickle.dump(examples, f)
+
+                for i in [1, 50, 100, 150, 199]:
+                    j = [i] * h_shape[0]
+                    #i = torch.range(1, 16*10, step=10, device = device).long()
+                    noise_image = gd.q_sample(x_start = self.hr, t = torch.from_numpy(np.array(j))).detach().cpu().numpy()
+                    #dtype=torch.int, device=device
+                    #examples.append(noise_image)
+                    with open('example_5132_idx_{}_t_{}.pkl'.format(idx,i),'wb') as f:
+                        pickle.dump(noise_image, f)
+                            
             self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t)
 
             self.H = x_noisy #if using difussion, the output is not the prediction values, but the predicted noise
@@ -205,9 +222,9 @@ class BuildModel:
     # ----------------------------------------
     # update parameters and get loss
     # ----------------------------------------
-    def optimize_parameters(self):
+    def optimize_parameters(self,idx):
         self.G_optimizer.zero_grad()
-        self.netG_forward()
+        self.netG_forward(idx)
         if len(self.E.shape) == 3:
             self.E = torch.unsqueeze(self.E, axis=1)
         if len(self.H.shape) ==3:
@@ -272,7 +289,7 @@ class BuildModel:
                 # -------------------------------
                 # 3) optimize parameters
                 # -------------------------------
-                self.optimize_parameters()
+                self.optimize_parameters(i)
                 print("Model Loss {} after step {}".format(self.G_loss, current_step))
                 #print("E data",self.E.shape)
                 # -------------------------------
@@ -293,7 +310,7 @@ class BuildModel:
                 for j, val_data in enumerate(self.val_loader):
                     counter = counter + 1
                     self.feed_data(val_data)
-                    self.netG_forward()
+                    self.netG_forward(j)
                     val_loss = val_loss + self.G_lossfn(self.E, self.H).detach()
                 val_loss = val_loss / counter
                 print("training loss:", self.G_loss.item())
