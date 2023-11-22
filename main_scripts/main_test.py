@@ -108,6 +108,7 @@ def main():
             pred_100_list = []
             pred_50_list = []
             pred_150_list = []
+            pred_last_list = []
             for i, test_data in enumerate(test_loader):
                 idx += 1
                 batch_size = test_data["L"].shape[0]
@@ -123,9 +124,9 @@ def main():
                 image_size = model.L.shape[2]
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
-                input_temp = input_vars[:,-1,:,:].cpu().numpy()
-                #input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
-                #input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+                #input_temp = input_vars[:,-1,:,:].cpu().numpy()
+                input_temp = (np.squeeze(input_vars[:,-1,:,:]) + 1)/2 * (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
+                input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
 
                 with torch.no_grad():
@@ -141,26 +142,34 @@ def main():
                 samples = gd.sample(image_size=image_size, 
                                     batch_size=batch_size, 
                                     x_in=x_in)
+                
                 print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
-                preds = samples[-1].cpu().numpy()
-                #*(vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                sample_last = samples[-1].cpu().numpy()  #
+                sample_last_clip = np.clip((sample_last + 1)/2, 0, 0.99)
+                preds = sample_last_clip * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                preds =np.exp(preds+np.log(args.k))-args.k
+
                 sample_first = samples[0].cpu().numpy()
+
                 sample_50 = samples[50].cpu().numpy()
+
+
                 sample_100 = samples[100].cpu().numpy()
+
+
                 sample_150 = samples[150].cpu().numpy()
-                
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 #preds = sample_last.cpu().numpy()
     
-                #preds =np.exp(sample_last.cpu().numpy()+np.log(args.k))-args.k
+                
     
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
-                hr = model.hr.cpu().numpy() * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                hr = (model.hr.cpu().numpy() +1)/2 * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 hr = np.exp(hr+np.log(args.k))-args.k
                 
             
@@ -170,6 +179,7 @@ def main():
                 ref_list.append(ref)  #true noise
                 noise_pred_list.append(noise_pred) # predicted noise
                 pred_list.append(preds)  #predicted high-resolution images
+                pred_last_list.append(sample_last)
                 pred_first_list.append(sample_first)
                 pred_100_list.append(sample_100)
                 pred_50_list.append(sample_50)
@@ -179,6 +189,7 @@ def main():
         cidx = np.squeeze(np.concatenate(cidx_list,0))
         times = np.concatenate(times_list,0)
         pred = np.concatenate(pred_list,0)
+        pred_last = np.concatenate(pred_last_list,0)
         pred_first = np.concatenate(pred_first_list,0)
         pred_50 = np.concatenate(pred_50_list,0)
         pred_100 = np.concatenate(pred_100_list,0)
@@ -203,6 +214,7 @@ def main():
             pred_100 = pred_100[:, 0 , : ,:]
             pred_150 = pred_150[:, 0 , : ,:]
             pred_first = pred_first[:, 0 , : ,:]
+            pred_last = pred_last[:, 0 , : ,:]
         if len(ref.shape) == 4:
             ref = ref[:, 0,: ,:]
         if len(intL.shape) == 4:
@@ -222,6 +234,7 @@ def main():
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
                     fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
+                    fcast_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
                     fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
                     fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
                     fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),

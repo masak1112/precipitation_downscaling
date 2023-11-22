@@ -195,9 +195,10 @@ class BuildModel:
             
             t = torch.randint(0, 200, (h_shape[0],), device = device).long()
             print("t",t)
+            noise = torch.randn_like(self.hr)
           
             gd = GaussianDiffusion(model = self.netG, timesteps = 200, conditional=self.conditional)
-            x_noisy = gd.q_sample(x_start = self.hr, t = t)
+            x_noisy = gd.q_sample(x_start = self.hr, t = t, noise=noise)
             print("x_nosey shape", x_noisy.shape) #[16,1,160,160][batch_size,chanel,img,img]
 
             #save noise images
@@ -209,7 +210,7 @@ class BuildModel:
                 for i in [1, 50, 100, 150, 199]:
                     j = [i] * h_shape[0]
                     #i = torch.range(1, 16*10, step=10, device = device).long()
-                    noise_image = gd.q_sample(x_start = self.hr, t = torch.from_numpy(np.array(j))).detach().cpu().numpy()
+                    noise_image = gd.q_sample(x_start = self.hr, t = torch.from_numpy(np.array(j)),noise=noise).detach().cpu().numpy()
                     #dtype=torch.int, device=device
                     #examples.append(noise_image)
                     with open('example_5132_idx_{}_t_{}.pkl'.format(idx,i),'wb') as f:
@@ -217,7 +218,7 @@ class BuildModel:
                             
             self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t)
 
-            self.H = x_noisy #if using difussion, the output is not the prediction values, but the predicted noise
+            self.H = noise #if using difussion, the output is not the prediction values, but the predicted noise
 
     # ----------------------------------------
     # update parameters and get loss

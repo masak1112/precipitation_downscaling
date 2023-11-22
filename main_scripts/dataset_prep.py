@@ -295,6 +295,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # log-transform -> log(x+k)-log(k)
         inputs_nparray[self._prcp_indexes] = np.log(inputs_nparray[self._prcp_indexes]+self.k)-np.log(self.k)
         outputs_nparray = np.log(outputs_nparray+self.k)-np.log(self.k)
+
+        
         print('inputs_nparray shape: {}'.format(inputs_nparray.shape))
         print('inputs_nparray[self._prcp_indexes] shape: {}'.format(inputs_nparray[self._prcp_indexes].shape))
 
@@ -347,8 +349,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.idx = 0
         
         def normalize(x, x_min,x_max):
-            return (x - x_min)/(x_max-x_min)
-         
+            return ((x - x_min)/(x_max-x_min))*2-1
+        
+        # def normalize(x, x_min,x_max):
+        #     return (x - x_min)/(x_max-x_min)
         # This is previous approach, which perfrms bad for precipitation
         #transform_x = torchvision.transforms.Normalize(self.vars_in_patches_mean, self.vars_in_patches_std)
 
@@ -369,7 +373,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 cid = self.idx_perm[self.idx]
                 for i in range(len(self.vars_in_patches_min)):
                     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
-                y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)
+                y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min))*2-1
+                #y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)
                 t[jj] = self.times_patches_list[cid]
                 lats_lons_cid = cid%self.num_patches_img 
                 lons_cid = int(lats_lons_cid%self.n_patches_x)
