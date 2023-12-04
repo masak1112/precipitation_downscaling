@@ -125,7 +125,7 @@ def main():
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
                 #input_temp = input_vars[:,-1,:,:].cpu().numpy()
-                input_temp = (np.squeeze(input_vars[:,-1,:,:]) + 1)/2 * (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
+                input_temp = (np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
                 input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
 
@@ -146,7 +146,7 @@ def main():
                 print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
                 sample_last = samples[-1].cpu().numpy()  #
-                sample_last_clip = np.clip((sample_last + 1)/2, 0, 0.99)
+                sample_last_clip = (sample_last + 1)/2
                 preds = sample_last_clip * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 preds =np.exp(preds+np.log(args.k))-args.k
 
@@ -169,7 +169,7 @@ def main():
                 ref = model.H.cpu().numpy() #this is the true noise
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
-                hr = (model.hr.cpu().numpy() +1)/2 * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                hr = (model.hr.cpu().numpy()  +1 /2) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 hr = np.exp(hr+np.log(args.k))-args.k
                 
             

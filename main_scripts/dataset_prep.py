@@ -349,7 +349,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.idx = 0
         
         def normalize(x, x_min,x_max):
-            return ((x - x_min)/(x_max-x_min))*2-1
+            return ((x - x_min)/(x_max-x_min))
         
         # def normalize(x, x_min,x_max):
         #     return (x - x_min)/(x_max-x_min)
@@ -373,7 +373,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 cid = self.idx_perm[self.idx]
                 for i in range(len(self.vars_in_patches_min)):
                     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
-                y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min))*2-1
+                y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min))*2 - 1
                 #y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)
                 t[jj] = self.times_patches_list[cid]
                 lats_lons_cid = cid%self.num_patches_img 
