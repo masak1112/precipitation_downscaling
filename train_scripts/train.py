@@ -162,6 +162,7 @@ class BuildModel:
     def feed_data(self, data):
 
         self.L = data['L'].cuda()
+        self.top = data["top"]
     
         if self.diffusion:
             upsampling = Upsampling(in_channels = 8)
