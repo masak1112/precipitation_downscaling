@@ -17,6 +17,7 @@ import os
 import json
 import gc
 
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 cuda = torch.cuda.is_available()
 if cuda:
@@ -135,6 +136,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         print("The total number of samples after filtering NaN and zeros values:", len(self.vars_in_patches_list))
         
+
         self.n_samples = len(self.vars_in_patches_list)
         #print("var_out size",self.vars_out_patches_list)
         
@@ -200,8 +202,21 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         outputs_nparray = output.to_array(dim = "variables").squeeze().values.astype(np.float32)
         # log-transform -> log(x+k)-log(k)
                 # log-transform -> log(x+k)-log(k)
-        inputs_nparray[self._prcp_indexes] = np.log(inputs_nparray[self._prcp_indexes]+self.k)-np.log(self.k)
-        outputs_nparray = np.log(outputs_nparray+self.k)-np.log(self.k)
+        #Yan's method
+        # inputs_nparray[self._prcp_indexes] = np.log(inputs_nparray[self._prcp_indexes]+self.k)-np.log(self.k)
+        # outputs_nparray = np.log(outputs_nparray+self.k)-np.log(self.k)
+
+        # The data processing appraoch based on Leinnon' 2023 paper  
+        inputs_nparray[self._prcp_indexes][inputs_nparray[self._prcp_indexes]<0.1]  = np.log10(0.02)
+        inputs_nparray[self._prcp_indexes][inputs_nparray[self._prcp_indexes]>=0.1]  = np.log10(inputs_nparray[self._prcp_indexes])
+        outputs_nparray[outputs_nparray<0.1] = np.log10(0.02)
+        outputs_nparray[outputs_nparray>=0.1] = np.log10(outputs_nparray)
+
+    
+
+        # Harris paper data preprocessing method
+        # inputs_nparray[self._prcp_indexes] = np.log10(inputs_nparray[self._prcp_indexes]+1)
+        # outputs_nparray = np.log10(outputs_nparray+1)
         #print('inputs_nparray shape: {}'.format(inputs_nparray.shape))
         #print('inputs_nparray[self._prcp_indexes] shape: {}'.format(inputs_nparray[self._prcp_indexes].shape))
 
@@ -216,7 +231,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         times = inputs["time"].values  # get the timestamps
         times = np.transpose(np.stack([dt["time"].dt.year,dt["time"].dt.month,dt["time"].dt.day,dt["time"].dt.hour]))        
-        print("Original input shape:", da_in.shape)
 
         # split into small patches, the return dim are [vars, samples,n_patch_x, n_patch_y, patch_size, patch_size]
         vars_in_patches = da_in.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
@@ -264,9 +278,33 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         no_nan_idx = []
         
-        # get the indx if there any nan in the sample
-        [no_nan_idx.append(i) for i in range(vars_out_patches.shape[0]) if (not torch.isnan(vars_out_patches[i]).any())]
-        #and torch.count_nonzero(vars_out_patches[i]) > 50)]
+        #clean the datasets
+        # get the indx if there any nan in the sample，
+        # Follow the paper Harris, Each sub-image was scored on “how rainy” 
+        # it was in that image and categorized into one of four bins,
+        # depending on what fraction of pixels contained rainfall (>0.1 mm/hr) – 0%–25%, 25%–50%, 50%–75%, or 75%–100%.
+        threshold = 0.2
+        for i in range(vars_out_patches.shape[0]):
+            #remove Nan values and no rain images
+            if (not torch.isnan(vars_out_patches[i]).any() and torch.max(vars_out_patches[i])>0.1):
+                #Calculate the fraction of rain pixels
+                rain_pix = torch.numel(vars_out_patches[i][vars_out_patches[i]> 0.1])
+                print("Index {}: Rain_pixels: {}".format(i,rain_pix))
+                if rain_pix/(vars_out_patches.shape[0]*vars_out_patches.shape[1])> threshold:
+                    no_nan_idx.append(i) 
+                else:
+                    pass
+                
+        
+        # for i in range(vars_out_patches.shape[0]):
+        #     #remove Nan values and no rain images
+        #     if (not torch.isnan(vars_out_patches[i]).any()):
+        #         no_nan_idx.append(i) 
+
+
+            
+            
+        #[no_nan_idx.append(i) for i in range(vars_out_patches.shape[0]) if (not torch.isnan(vars_out_patches[i]).any())]
        
         # Get the index if the zero values
         #[no_zeros_idx.append(i) for i in range(vars_out_patches.shape[0]) if torch.count_nonzero(vars_out_patches[i]) > 10]  
@@ -393,11 +431,16 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             lats = torch.zeros(self.batch_size, self.patch_size*self.sf)
 
             for jj in range(self.batch_size):
+                
 
                 cid = self.idx_perm[self.idx]
                 for i in range(len(self.vars_in_patches_min)):
                     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
-                y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min))*2 - 1
+                
+                # data transformation based on leinnon 2023 paper
+                #y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min))*2 - 1
+                y[jj] = self.vars_out_patches_list[cid]
+
                 t[jj] = self.times_patches_list[cid]
                 lats_lons_cid = cid%self.num_patches_img 
                 lons_cid = int(lats_lons_cid%self.n_patches_x)
