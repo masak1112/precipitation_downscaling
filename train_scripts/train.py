@@ -279,7 +279,7 @@ class BuildModel:
                 # -------------------------------
                 # 1) update learning rate
                 # -------------------------------
-                self.update_learning_rate(current_step)
+                #self.update_learning_rate(current_step)
 
                 lr = self.get_lr()  # get learning rate
 
@@ -297,7 +297,7 @@ class BuildModel:
                 # -------------------------------
                 # 4) Save model
                 # -------------------------------
-                if current_step % self.save_freq == 0:
+                if (current_step % self.save_freq) == 0 and current_step>70000:
                     self.save(current_step)
                     print("Model Saved")
                     print("learnign rate",lr)
@@ -306,18 +306,18 @@ class BuildModel:
             
             self.save(current_step)
 
-            with torch.no_grad():
-                val_loss = 0
-                counter = 0
-                for j, val_data in enumerate(self.val_loader):
-                    counter = counter + 1
-                    self.feed_data(val_data)
-                    self.netG_forward(j)
-                    val_loss = val_loss + self.G_lossfn(self.E, self.H).detach()
-                val_loss = val_loss / counter
-                print("training loss:", self.G_loss.item())
-                print("validation loss:", val_loss.item())
-                print("lr", lr)
+            # with torch.no_grad():
+            #     val_loss = 0
+            #     counter = 0
+            #     for j, val_data in enumerate(self.val_loader):
+            #         counter = counter + 1
+            #         self.feed_data(val_data)
+            #         self.netG_forward(j)
+            #         val_loss = val_loss + self.G_lossfn(self.E, self.H).detach()
+            #     val_loss = val_loss / counter
+            #     print("training loss:", self.G_loss.item())
+            #     print("validation loss:", val_loss.item())
+            #     print("lr", lr)
 
             #self.schedulers[0].step(val_loss.item())
 

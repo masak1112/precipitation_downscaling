@@ -72,7 +72,8 @@ def main():
 
     test_loader = create_loader(file_path=args.test_dir,
                                 mode="test",
-                                stat_path=args.stat_dir)
+                                stat_path=args.stat_dir,
+                                batch_size=8)
     
     #Get and load the statistics information from the training directory for denormalisation
     stat_file = os.path.join(args.stat_dir, "statistics.json")
@@ -100,7 +101,6 @@ def main():
             cidx_list = []       # image index
             times_list = []      #timestamps
             noise_pred_list = [] # predicted noise
-            all_sample_list = [] #this is ony for difussion model inference
             hr_list = []         # ground truth images
             lats_list = []       #lats
             lons_list = []       #lons
@@ -112,6 +112,7 @@ def main():
             for i, test_data in enumerate(test_loader):
                 idx += 1
                 batch_size = test_data["L"].shape[0]
+                print("batdh_size",batch_size)
                 cidx_temp = test_data["idx"]
                 times_temp = test_data["T"]
                 lats = test_data["lats"].cpu().numpy()
@@ -125,8 +126,8 @@ def main():
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
                 #input_temp = input_vars[:,-1,:,:].cpu().numpy()
-                input_temp = (np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min 
-                input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+                input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
+                input_temp = np.exp(input_temp+np.log(args.k))-args.k
  
 
                 with torch.no_grad():
@@ -138,7 +139,6 @@ def main():
                 print("Start reverse process")
 
                 x_in = model.L
-    
                 samples = gd.sample(image_size=image_size, 
                                     batch_size=batch_size, 
                                     x_in=x_in)
@@ -146,9 +146,13 @@ def main():
                 print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
                 sample_last = samples[-1].cpu().numpy()  #
-                sample_last_clip = (sample_last + 1)/2
-                preds = sample_last_clip * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
-                preds =np.exp(preds+np.log(args.k))-args.k
+                preds = samples[-1].cpu().numpy() 
+                # preds[preds<-2] = 0
+                # preds[preds>=-2] = 10**preds[preds>=-2]
+                #sample_last_clip = (sample_last + 1)/2
+                #preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                #log-transform -> log(x+k)-log(k)
+                #preds =np.exp(preds+np.log(args.k))-args.k
 
                 sample_first = samples[0].cpu().numpy()
 
@@ -163,14 +167,15 @@ def main():
                 #all_sample_list = all_sample_list.append(sample_last)
                 #preds = sample_last.cpu().numpy()
     
-                
     
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
-                hr = (model.hr.cpu().numpy()  +1 /2) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
-                hr = np.exp(hr+np.log(args.k))-args.k
+                hr = model.hr.cpu().numpy()
+
+                #hr = (model.hr.cpu().numpy()) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                #hr = np.exp(hr+np.log(args.k))-args.k
                 
             
                 input_list.append(input_temp) #ground truth images
