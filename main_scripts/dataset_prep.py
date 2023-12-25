@@ -205,7 +205,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # log-transform -> log(x+k)-log(k)
 
 
-
         da_in = torch.from_numpy(inputs_nparray)
         da_out = torch.from_numpy(outputs_nparray)
         
@@ -269,7 +268,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # Follow the paper Harris, Each sub-image was scored on “how rainy” 
         # it was in that image and categorized into one of four bins,
         # depending on what fraction of pixels contained rainfall (>0.1 mm/hr) – 0%–25%, 25%–50%, 50%–75%, or 75%–100%.
-
 
 
 

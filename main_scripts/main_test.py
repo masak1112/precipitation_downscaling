@@ -147,6 +147,7 @@ def main():
                 #chose the last channle and last varialbe (precipitation)
                 sample_last = samples[-1].cpu().numpy()  #
                 preds = samples[-1].cpu().numpy() 
+                preds[preds<0] = 0
                 # preds[preds<-2] = 0
                 # preds[preds>=-2] = 10**preds[preds>=-2]
                 #sample_last_clip = (sample_last + 1)/2

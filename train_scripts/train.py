@@ -198,7 +198,7 @@ class BuildModel:
             print("t",t)
             noise = torch.randn_like(self.hr)
           
-            gd = GaussianDiffusion(model = self.netG, timesteps = 200, conditional=self.conditional)
+            gd = GaussianDiffusion(model = self.netG, timesteps = 400, conditional=self.conditional)
             x_noisy = gd.q_sample(x_start = self.hr, t = t, noise=noise)
             print("x_nosey shape", x_noisy.shape) #[16,1,160,160][batch_size,chanel,img,img]
 
