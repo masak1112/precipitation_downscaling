@@ -195,10 +195,10 @@ class BuildModel:
 
             
             t = torch.randint(0, 200, (h_shape[0],), device = device).long()
-            print("t",t)
+   
             noise = torch.randn_like(self.hr)
           
-            gd = GaussianDiffusion(model = self.netG, timesteps = 400, conditional=self.conditional)
+            gd = GaussianDiffusion(model = self.netG, timesteps = 200, conditional=self.conditional)
             x_noisy = gd.q_sample(x_start = self.hr, t = t, noise=noise)
             print("x_nosey shape", x_noisy.shape) #[16,1,160,160][batch_size,chanel,img,img]
 
@@ -297,7 +297,7 @@ class BuildModel:
                 # -------------------------------
                 # 4) Save model
                 # -------------------------------
-                if (current_step % self.save_freq) == 0 and current_step>70000:
+                if (current_step % self.save_freq) == 0 :
                     self.save(current_step)
                     print("Model Saved")
                     print("learnign rate",lr)

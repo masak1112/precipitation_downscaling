@@ -51,7 +51,7 @@ def sigmoid_beta_schedule(timesteps):
     return torch.sigmoid(betas) * (beta_end - beta_start) + beta_start
 
 def extract(a, t, x_shape):
-    print("t",t) 
+
     batch_size = t.shape[0]
     a = a.to(device)
     out = a.gather(-1, t.to(device))
@@ -87,10 +87,9 @@ class GaussianDiffusion(nn.Module):
     def set_new_noise_schedule(self):
      
         alphas = 1. - self.betas
-        print("alpha", alphas)
+     
         # Returns the cumulative product of elements of input in the dimension dim
-        alphas_cumprod = torch.cumprod(alphas, axis = 0)
-        print("alphascumprod", alphas_cumprod ) #[1,0,8]
+        alphas_cumprod = torch.cumprod(alphas, axis = 0) #[1,0,8]
         self.alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value = 1.0)
         self.sqrt_recip_alphas = torch.sqrt(1.0 / alphas)
 
@@ -135,7 +134,6 @@ class GaussianDiffusion(nn.Module):
         # Use our model (noise predictor) to predict the mean
         if condition_x is not None:
             # this is conditional diffussion
-            print("Conditional x is not None")
             x_recon = self.model(torch.cat([condition_x, x], dim=1), t)
         else:
             x_recon = self.model(x, t)
@@ -155,7 +153,7 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     def p_sample_loop(self, shape, x_in=None):
-        #device = next(self.model.parameters()).device
+       
         b = shape[0]
         img = torch.randn(shape, device = device)
         # start from pure noise (for each example in the batch)
@@ -183,6 +181,6 @@ class GaussianDiffusion(nn.Module):
         
     @torch.no_grad()
     def sample(self, image_size=160, batch_size=16, x_in=None):
-        if self.conditional:
-            return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in)
+  
+        return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in)
 
