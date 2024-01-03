@@ -177,7 +177,7 @@ class BuildModel:
     # ----------------------------------------
     # feed L to netG
     # ----------------------------------------
-    def netG_forward(self,idx):
+    def netG_forward(self,idx=None):
 
         if not self.diffusion:
             self.E = self.netG(self.L) #[:,0,:,:]

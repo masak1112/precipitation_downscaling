@@ -39,7 +39,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  vars_out       : list = ["yw_hourly_tar"], 
                  sf             : int = 10,
                  seed           : int = 1234, 
-                 k              : float = 0.001, 
+                 k              : float = 0.5, 
                  mode           : str = "train",
                  stat_path      : str = None,
                  local          : bool = False):
@@ -142,8 +142,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             for i in range(len(self.vars_in)):
                 self.vars_in_patches_min.append(stat_data[self.vars_in[i]+'_min'])
                 self.vars_in_patches_max.append(stat_data[self.vars_in[i]+'_max'])
-                self.vars_in_patches_max.append(stat_data[self.vars_in[i]+'_avg'])
-                self.vars_in_patches_max.append(stat_data[self.vars_in[i]+'_std'])
+                self.vars_in_patches_avg.append(stat_data[self.vars_in[i]+'_avg'])
+                self.vars_in_patches_std.append(stat_data[self.vars_in[i]+'_std'])
             self.vars_out_patches_min = stat_data[self.var_out[0]+'_min']
             self.vars_out_patches_max = stat_data[self.var_out[0]+'_max']
             self.vars_out_patches_avg = stat_data[self.var_out[0]+'_avg']
@@ -310,7 +310,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
     
         for i in range(vars_out_patches.shape[0]):
             #remove Nan values and no rain images
-            if (not torch.isnan(vars_out_patches[i]).any() and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device) ):
+            if (not torch.isnan(vars_out_patches[i]).any()) and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device):
                 no_nan_idx.append(i) 
 
 
@@ -318,11 +318,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # log-transform -> log(x+k)-log(k)
         # print("vars_in_patches[self._prcp_indexes] ", vars_in_patches[self._prcp_indexes] )
         # print("torch.log(torch.tensor(self.k).to(device)",torch.log(torch.tensor(self.k).to(device)))
-        # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  torch.tensor(self.k).to("cpu")) -torch.log(torch.tensor(self.k).to("cpu"))
-        # vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
+        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  torch.tensor(self.k).to("cpu")) -torch.log(torch.tensor(self.k).to("cpu"))
+        vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
 
-        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.log(torch.tensor(self.k).to("cpu")))
-        vars_out_patches= torch.log10(vars_out_patches+ torch.log(torch.tensor(self.k).to("cpu")))
+        # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.log(torch.tensor(self.k).to("cpu")))
+        # vars_out_patches= torch.log10(vars_out_patches+ torch.log(torch.tensor(self.k).to("cpu")))
 
 
         ## The data processing appraoch based on Leinnon' 2023 paper  
@@ -449,8 +449,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         def normalize(x, x_min,x_max):
             return ((x - x_min)/(x_max-x_min))
 
-        def normalize(x, avg,std):
-            return (x-avg)/std
+        # def normalize(x, avg,std):
+        #     return (x-avg)/std
 
         
         # def normalize(x, x_min,x_max):
@@ -473,18 +473,20 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
             for jj in range(self.batch_size):
                 
-
                 cid = self.idx_perm[self.idx]
+                print("len of vars in", len(self.vars_in_patches_min))
                 for i in range(len(self.vars_in_patches_min)):
-                    x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
+                    #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
+                     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+
                 # for i in range(len(self.vars_in_patches_min)):
                 #     if i not in self._prcp_indexes:
                 #          x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
 
                 
                 # data transformation based on leinnon 2023 paperf
-                #y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
-                y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
+                y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                #y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
                 # y[jj] = self.vars_out_patches_list[cid]
 
                 t[jj] = self.times_patches_list[cid]
