@@ -127,7 +127,8 @@ def main():
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
                 #input_temp = input_vars[:,-1,:,:].cpu().numpy()
-                input_temp = ((np.squeeze(input_vars[:,-1,:,:]))* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
+                input_temp = input_vars[:,-1,:,:].cpu().numpy()
+                input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
                 input_temp = np.exp(input_temp+np.log(args.k))-args.k
  
 
@@ -149,12 +150,12 @@ def main():
                 sample_last = samples[-1].cpu().numpy()  #
                 preds = samples[-1].cpu().numpy() 
                 preds[preds<0] = 0
-                # preds[preds<-2] = 0
+                #preds[preds<-2] = 0
                 # preds[preds>=-2] = 10**preds[preds>=-2]
                 #sample_last_clip = (sample_last + 1)/2
-                #preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 #log-transform -> log(x+k)-log(k)
-                #preds =np.exp(preds+np.log(args.k))-args.k
+                preds =np.exp(preds+np.log(args.k))-args.k
 
                 sample_first = samples[0].cpu().numpy()
 
@@ -174,10 +175,10 @@ def main():
                 ref = model.H.cpu().numpy() #this is the true noise
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
-                hr = model.hr.cpu().numpy()
+                #hr = model.hr.cpu().numpy()
 
-                #hr = (model.hr.cpu().numpy()) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
-                #hr = np.exp(hr+np.log(args.k))-args.k
+                hr = (model.hr.cpu().numpy()) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                hr = np.exp(hr+np.log(args.k))-args.k
                 
             
                 input_list.append(input_temp) #ground truth images
@@ -283,7 +284,7 @@ def main():
                     input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min )+ vars_in_patches_min 
                     input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
-                    model.netG_forward()
+                    model.netG_forward(i)
                     #Get the prediction values
                     preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     preds = np.exp(preds+np.log(args.k))-args.k

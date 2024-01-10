@@ -178,7 +178,7 @@ class BuildModel:
     # ----------------------------------------
     # feed L to netG
     # ----------------------------------------
-    def netG_forward(self,idx):
+    def netG_forward(self,idx=None):
 
         if not self.diffusion:
             self.E = self.netG(self.L) #[:,0,:,:]
@@ -279,7 +279,7 @@ class BuildModel:
                 # -------------------------------
                 # 1) update learning rate
                 # -------------------------------
-                #self.update_learning_rate(current_step)
+                self.update_learning_rate(current_step)
 
                 lr = self.get_lr()  # get learning rate
 
@@ -297,7 +297,7 @@ class BuildModel:
                 # -------------------------------
                 # 4) Save model
                 # -------------------------------
-                if (current_step % self.save_freq) == 0 :
+                if (current_step % self.save_freq) == 0 and current_step>60000:
                     self.save(current_step)
                     print("Model Saved")
                     print("learnign rate",lr)

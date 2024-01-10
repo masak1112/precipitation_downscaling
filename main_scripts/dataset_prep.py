@@ -16,6 +16,7 @@ import math
 import os
 import json
 import gc
+import torchvision
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -38,7 +39,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  vars_out       : list = ["yw_hourly_tar"], 
                  sf             : int = 10,
                  seed           : int = 1234, 
-                 k              : float = 0.01, 
+                 k              : float = 0.5, 
                  mode           : str = "train",
                  stat_path      : str = None,
                  local          : bool = False):
@@ -117,12 +118,18 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             
             self.vars_in_patches_min = [] 
             self.vars_in_patches_max = [] 
+            self.vars_in_patches_avg = []
+            self.vars_in_patches_std = [] 
             for i in range(self.vars_in_patches_list.size()[1]):
                 self.vars_in_patches_min.append(torch.min(self.vars_in_patches_list[:,i,:,:]))
                 self.vars_in_patches_max.append(torch.max(self.vars_in_patches_list[:,i,:,:]))
+                self.vars_in_patches_avg.append(torch.mean(self.vars_in_patches_list[:,i,:,:]))
+                self.vars_in_patches_std.append(torch.std(self.vars_in_patches_list[:,i,:,:]))
 
             self.vars_out_patches_min = torch.min(self.vars_out_patches_list)
             self.vars_out_patches_max = torch.max(self.vars_out_patches_list)
+            self.vars_out_patches_avg = torch.mean(self.vars_out_patches_list)
+            self.vars_out_patches_std = torch.std(self.vars_out_patches_list)
             self.save_stats()
         else:
             with open(stat_file,'r') as f:
@@ -130,11 +137,18 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 print("Loading the stats file:", stat_file)
             self.vars_in_patches_min = []
             self.vars_in_patches_max = []
+            self.vars_in_patches_avg = []
+            self.vars_in_patches_std = [] 
             for i in range(len(self.vars_in)):
                 self.vars_in_patches_min.append(stat_data[self.vars_in[i]+'_min'])
                 self.vars_in_patches_max.append(stat_data[self.vars_in[i]+'_max'])
+                self.vars_in_patches_avg.append(stat_data[self.vars_in[i]+'_avg'])
+                self.vars_in_patches_std.append(stat_data[self.vars_in[i]+'_std'])
             self.vars_out_patches_min = stat_data[self.var_out[0]+'_min']
             self.vars_out_patches_max = stat_data[self.var_out[0]+'_max']
+            self.vars_out_patches_avg = stat_data[self.var_out[0]+'_avg']
+            self.vars_out_patches_std = stat_data[self.var_out[0]+'_std']
+        
 
         print("The total number of samples after filtering NaN and zeros values:", len(self.vars_in_patches_list))
         
@@ -155,12 +169,20 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             stats.update({key:float(self.vars_in_patches_min[i])})
             key = self.vars_in[i]+'_max'
             stats.update({key:float(self.vars_in_patches_max[i])}) 
+            key = self.vars_in[i]+'_avg'
+            stats.update({key:float(self.vars_in_patches_avg[i])}) 
+            key = self.vars_in[i]+'_std'
+            stats.update({key:float(self.vars_in_patches_std[i])}) 
         
         key = self.var_out[0]+'_min'
         stats.update({key:float(self.vars_out_patches_min)})
         key = self.var_out[0]+'_max'
         stats.update({key:float(self.vars_out_patches_max)})
 
+        key = self.var_out[0]+'_avg'
+        stats.update({key:float(self.vars_out_patches_avg)})
+        key = self.var_out[0]+'_std'
+        stats.update({key:float(self.vars_out_patches_std)})
         #save to output directory
         with open(output_file,'w') as f:
             json.dump(stats, f)
@@ -287,7 +309,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
     
         for i in range(vars_out_patches.shape[0]):
             #remove Nan values and no rain images
-            if (not torch.isnan(vars_out_patches[i]).any() and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device) ):
+            if (not torch.isnan(vars_out_patches[i]).any()) and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device):
                 no_nan_idx.append(i) 
 
 
@@ -298,8 +320,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  torch.tensor(self.k).to("cpu")) -torch.log(torch.tensor(self.k).to("cpu"))
         vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
 
-        # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]))
-        # vars_out_patches= torch.log10(vars_out_patches)
+        # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.log(torch.tensor(self.k).to("cpu")))
+        # vars_out_patches= torch.log10(vars_out_patches+ torch.log(torch.tensor(self.k).to("cpu")))
 
 
         ## The data processing appraoch based on Leinnon' 2023 paper  
@@ -421,14 +443,19 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         iter_start, iter_end = 0, int(len(self.idx_perm)/self.batch_size)-1 
         self.idx = 0
-        
+
+        #min-max score
         def normalize(x, x_min,x_max):
             return ((x - x_min)/(x_max-x_min))
+
+        # def normalize(x, avg,std):
+        #     return (x-avg)/std
+
         
         # def normalize(x, x_min,x_max):
         #     return (x - x_min)/(x_max-x_min)
-        # This is previous approach, which perfrms bad for precipitation
-        #transform_x = torchvision.transforms.Normalize(self.vars_in_patches_mean, self.vars_in_patches_std)
+        # This is previous approach, which perfrms bad for precipitation for UNET AND GAN
+        # transform_x = torchvision.transforms.Normalize(self.vars_in_patches_avg, self.vars_in_patches_std)
 
         for bidx in range(iter_start, iter_end):
 
@@ -446,8 +473,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             for jj in range(self.batch_size):
                 
                 cid = self.idx_perm[self.idx]
+                print("len of vars in", len(self.vars_in_patches_min))
                 for i in range(len(self.vars_in_patches_min)):
-                    x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
+                     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+
                 # for i in range(len(self.vars_in_patches_min)):
                 #     if i not in self._prcp_indexes:
                 #          x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
@@ -455,6 +485,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 
                 # data transformation based on leinnon 2023 paperf
                 y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                #y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
                 # y[jj] = self.vars_out_patches_list[cid]
 
                 t[jj] = self.times_patches_list[cid]
