@@ -163,6 +163,7 @@ class BuildModel:
 
         self.L = data['L'].cuda()
         self.top = data["top"]
+        print("self.top in feed daba",self.top.shape)
     
         if self.diffusion:
             upsampling = Upsampling(in_channels = 8)
@@ -191,7 +192,6 @@ class BuildModel:
             
             self.hr = self.H
             h_shape = self.H.shape
-            print("h_shape",h_shape)
 
             
             t = torch.randint(0, 200, (h_shape[0],), device = device).long()
@@ -217,7 +217,7 @@ class BuildModel:
                     with open('example_5132_idx_{}_t_{}.pkl'.format(idx,i),'wb') as f:
                         pickle.dump(noise_image, f)
                             
-            self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t)
+            self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t, self.top)
 
             self.H = noise #if using difussion, the output is not the prediction values, but the predicted noise
 

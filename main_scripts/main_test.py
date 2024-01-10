@@ -37,7 +37,7 @@ def main():
     parser.add_argument("--save_dir", type = str, help = "The output directory")
     parser.add_argument("--dataset_type", type=str, default="precipitation", help="The dataset type: temperature, precipitation")
     parser.add_argument("--model_type", type = str, default = "unet", help = "The model type: unet, swinir")
-    parser.add_argument("--k", type = int, default = 0.01, help = "The parameter for log-transform")
+    parser.add_argument("--k", type = int, default = 0.5, help = "The parameter for log-transform")
     parser.add_argument("--stat_dir", type = str, required = True,
                         default = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/train",
                         help = "The directory where the statistics json file of training data is stored")    
@@ -115,6 +115,7 @@ def main():
                 print("batdh_size",batch_size)
                 cidx_temp = test_data["idx"]
                 times_temp = test_data["T"]
+                top = test_data["top"]
                 lats = test_data["lats"].cpu().numpy()
                 lons = test_data["lons"].cpu().numpy()
                 cidx_list.append(cidx_temp.cpu().numpy())
@@ -126,7 +127,7 @@ def main():
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
                 #input_temp = input_vars[:,-1,:,:].cpu().numpy()
-                input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
+                input_temp = ((np.squeeze(input_vars[:,-1,:,:]))* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
                 input_temp = np.exp(input_temp+np.log(args.k))-args.k
  
 
@@ -141,7 +142,7 @@ def main():
                 x_in = model.L
                 samples = gd.sample(image_size=image_size, 
                                     batch_size=batch_size, 
-                                    x_in=x_in)
+                                    x_in=x_in, top=top)
                 
                 print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
@@ -207,7 +208,6 @@ def main():
         lons_hr = np.concatenate(lons_list, 0)
         hr_list = np.concatenate(hr_list,0)
 
-        print("pred_first shape", pred_first.shape)
                 
         datetimes = []
         for i in range(times.shape[0]):
@@ -225,10 +225,9 @@ def main():
             ref = ref[:, 0,: ,:]
         if len(intL.shape) == 4:
             intL = intL[:, 0,: ,:]
-        print("shape of ref", ref.shape)
         if len(hr_list.shape) == 4:
             hr_list = hr_list[:, 0,: ,:]
-        print("shape of hr_list",hr_list.shape)
+
 
 
         noiseP = np.concatenate(noise_pred_list,0)

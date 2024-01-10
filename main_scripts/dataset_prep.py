@@ -259,8 +259,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         lons_in = torch.from_numpy(lons_tar)
         self.lats_in_patches = lats_in.unfold(0, self.patch_size*self.sf, self.patch_size*self.sf)
         self.lons_in_patches = lons_in.unfold(0, self.patch_size*self.sf, self.patch_size*self.sf)
-        print("vars_inpatchese", vars_in_patches.shape)
-
+    
         no_nan_idx = []
         
         #clean the datasets
@@ -438,7 +437,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             # t is the corresponding timestamps, cidx is the index
             x = torch.zeros(self.batch_size, len(self.vars_in), self.patch_size, self.patch_size)
             y = torch.zeros(self.batch_size, self.patch_size * self.sf, self.patch_size * self.sf)
-            x_top = torch.zeros(self.batch_size, self.patch_size * self.sf, self.patch_size * self.sf)
+            x_top = torch.zeros(self.batch_size, 1, self.patch_size * self.sf, self.patch_size * self.sf)
             t = torch.zeros(self.batch_size, 4, dtype = torch.int)
             cidx = torch.zeros(self.batch_size, 1, dtype = torch.int) #store the index
             lons = torch.zeros(self.batch_size, self.patch_size*self.sf)
@@ -446,7 +445,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
             for jj in range(self.batch_size):
                 
-
                 cid = self.idx_perm[self.idx]
                 for i in range(len(self.vars_in_patches_min)):
                     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
@@ -471,8 +469,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                                                      lons[jj].cpu().numpy()[-1]+self.dx/20)).sel(lat_tar=slice(lats[jj].cpu().numpy()[0]-self.dx/20,
                                                                                                     lats[jj].cpu().numpy()[-1]+self.dx/20))["surface_elevation"].values
                 
-  
-                tops = torch.from_numpy(np.transpose(tops,(1,0)))
+                
+          
+                tops = torch.from_numpy(np.expand_dims(np.transpose(tops,(1,0)),0))
+
                 
                 x_top[jj] = normalize(tops, -182, 3846)
                 cidx[jj] = torch.tensor(cid, dtype=torch.int)

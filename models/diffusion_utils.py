@@ -120,7 +120,7 @@ class GaussianDiffusion(nn.Module):
 
 
     @torch.no_grad()
-    def p_sample(self, x, t, t_index, condition_x=None):
+    def p_sample(self, x, t, t_index, condition_x=None, top=None):
         """
         x is the input for model (start noise image)
         """
@@ -134,9 +134,9 @@ class GaussianDiffusion(nn.Module):
         # Use our model (noise predictor) to predict the mean
         if condition_x is not None:
             # this is conditional diffussion
-            x_recon = self.model(torch.cat([condition_x, x], dim=1), t)
+            x_recon = self.model(torch.cat([condition_x, x], dim=1), t, top)
         else:
-            x_recon = self.model(x, t)
+            x_recon = self.model(x, t, top)
         model_mean = sqrt_recip_alphas_t * (
                 x - betas_t * x_recon / sqrt_one_minus_alphas_cumprod_t
                 )
@@ -152,7 +152,7 @@ class GaussianDiffusion(nn.Module):
 
 
     @torch.no_grad()
-    def p_sample_loop(self, shape, x_in=None):
+    def p_sample_loop(self, shape, x_in=None, top=None):
        
         b = shape[0]
         img = torch.randn(shape, device = device)
@@ -166,7 +166,7 @@ class GaussianDiffusion(nn.Module):
                           desc = 'sampling loop time step',
                           total = self.timesteps):
                 img = self.p_sample(img, torch.full((b,),
-                                    i, device = device, dtype = torch.long), i)
+                                    i, device = device, dtype = torch.long), i, top)
                 imgs.append(img)
             return imgs
         else:
@@ -175,12 +175,12 @@ class GaussianDiffusion(nn.Module):
                           desc = 'sampling loop time step',
                           total = self.timesteps):
                 img = self.p_sample(img, torch.full((b,), i, device = device, dtype = torch.long),
-                                    i, condition_x = x_in)
+                                    i, condition_x = x_in, top=top)
                 imgs.append(img)
             return imgs
         
     @torch.no_grad()
-    def sample(self, image_size=160, batch_size=16, x_in=None):
+    def sample(self, image_size=160, batch_size=16, x_in=None,top=None):
   
-        return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in)
+        return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in, top=top)
 
