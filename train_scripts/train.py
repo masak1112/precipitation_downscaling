@@ -297,14 +297,14 @@ class BuildModel:
                 # -------------------------------
                 # 4) Save model
                 # -------------------------------
-                if (current_step % self.save_freq) == 0 and current_step>60000:
+                if (current_step % self.save_freq) == 0 and current_step>30000:
                     self.save(current_step)
                     print("Model Saved")
                     print("learnign rate",lr)
                     print("Time per step:", time.time() - st)
                 wandb.log({"loss": self.G_loss, "lr": lr})
             
-            self.save(current_step)
+        self.save(current_step)
 
             # with torch.no_grad():
             #     val_loss = 0
