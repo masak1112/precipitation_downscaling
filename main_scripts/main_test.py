@@ -37,7 +37,7 @@ def main():
     parser.add_argument("--save_dir", type = str, help = "The output directory")
     parser.add_argument("--dataset_type", type=str, default="precipitation", help="The dataset type: temperature, precipitation")
     parser.add_argument("--model_type", type = str, default = "unet", help = "The model type: unet, swinir")
-    parser.add_argument("--k", type = int, default = 0.1, help = "The parameter for log-transform")
+    parser.add_argument("--k", type = int, default = 0.5, help = "The parameter for log-transform")
     parser.add_argument("--stat_dir", type = str, required = True,
                         default = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/train",
                         help = "The directory where the statistics json file of training data is stored")    
@@ -246,13 +246,14 @@ def main():
                     fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
-                    hr = (["time", "lat", "lon"], hr_list),
+                    hr = (["time", "lat", "lon"], hr_list)
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                     ),
                 coords = dict(
                     time = datetimes,
                     pitch_idx = cidx,
+
                     ),
                 attrs = dict(description = "Precipitation downscaling data."),
                     )
