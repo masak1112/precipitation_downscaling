@@ -20,7 +20,10 @@ from torch import nn
 from tqdm import tqdm
 import numpy as np
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
+import random
+SEED=1234
+random.seed(SEED)
+torch.manual_seed(SEED)
 
 #############Define the schedules for T timestamps
 def cosine_beta_schedule(timesteps, s=0.008):

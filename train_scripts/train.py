@@ -181,7 +181,7 @@ class BuildModel:
     def netG_forward(self,idx=None):
 
         if not self.diffusion:
-            self.E = self.netG(self.L) #[:,0,:,:]
+            self.E = self.netG(self.L, self.top) #[:,0,:,:]
             #print("The prediction shape (E):", self.E.cpu().numpy().shape)
             #print("The min of prediction", np.min(self.E.detach().cpu().numpy()))
             #print("The max of prediction", np.max(self.E.detach().cpu().numpy()))
