@@ -246,7 +246,7 @@ def main():
                     fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
-                    hr = (["time", "lat", "lon"], hr_list)
+                    hr = (["time", "lat", "lon"], hr_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                     ),
