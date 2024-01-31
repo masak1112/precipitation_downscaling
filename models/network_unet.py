@@ -10,6 +10,7 @@ from functools import reduce
 from operator import __add__
 
 
+
 class Conv2dSamePadding(nn.Conv2d):
     def __init__(self,*args,**kwargs):
         super(Conv2dSamePadding, self).__init__(*args, **kwargs)
@@ -91,6 +92,7 @@ class Conv_top(nn.Module):
     def forward(self, x: Tensor)->Tensor:
         #add noise
         shape = x.shape
+        torch.manual_seed(10)
         noise = torch.randn(shape)
         x0 = torch.cat([noise, x], dim=1)
         x1 = self.conv_block1(x0) #16, 8, 160, 160
