@@ -115,8 +115,10 @@ def main():
                 print("batdh_size",batch_size)
                 cidx_temp = test_data["idx"]
                 times_temp = test_data["T"]
+                top = test_data["top"]
                 lats = test_data["lats"].cpu().numpy()
                 lons = test_data["lons"].cpu().numpy()
+
                 cidx_list.append(cidx_temp.cpu().numpy())
                 times_list.append(times_temp.cpu().numpy())
                 model.feed_data(test_data)
@@ -125,6 +127,7 @@ def main():
                 image_size = model.L.shape[2]
                 #Get the low resolution inputs
                 input_vars = test_data["L"]
+                #input_temp = input_vars[:,-1,:,:].cpu().numpy()
                 input_temp = input_vars[:,-1,:,:].cpu().numpy()
                 input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
                 input_temp = np.exp(input_temp+np.log(args.k))-args.k
@@ -141,7 +144,7 @@ def main():
                 x_in = model.L
                 samples = gd.sample(image_size=image_size, 
                                     batch_size=batch_size, 
-                                    x_in=x_in)
+                                    x_in=x_in, top=top)
                 
                 print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
@@ -207,7 +210,6 @@ def main():
         lons_hr = np.concatenate(lons_list, 0)
         hr_list = np.concatenate(hr_list,0)
 
-        print("pred_first shape", pred_first.shape)
                 
         datetimes = []
         for i in range(times.shape[0]):
@@ -225,10 +227,9 @@ def main():
             ref = ref[:, 0,: ,:]
         if len(intL.shape) == 4:
             intL = intL[:, 0,: ,:]
-        print("shape of ref", ref.shape)
         if len(hr_list.shape) == 4:
             hr_list = hr_list[:, 0,: ,:]
-        print("shape of hr_list",hr_list.shape)
+
 
 
         noiseP = np.concatenate(noise_pred_list,0)
@@ -269,6 +270,7 @@ def main():
                 hr_list = []  # ground truth images
                 lats_list = [] #lats
                 lons_list = [] #lons
+                tops_list = [] 
                 for i, test_data in enumerate(test_loader):
                     idx += 1
                     batch_size = test_data["L"].shape[0]
@@ -276,7 +278,8 @@ def main():
                     times_temp = test_data["T"]
                     lats = test_data["lats"].cpu().numpy()
                     lons = test_data["lons"].cpu().numpy()
-      
+                    top = test_data["top"]
+
                     model.feed_data(test_data)
 
                     #Get the low resolution inputs
@@ -293,12 +296,16 @@ def main():
                     #Get the groud truth values
                     hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     hr = np.exp(hr+np.log(args.k))-args.k
+                    
+                    #get the raw topograph data
+                    top = top *(3846+182) -182
 
                     
                     lats_list.append(lats)
                     lons_list.append(lons)
                     cidx_list.append(cidx_temp.cpu().numpy())
                     times_list.append(times_temp.cpu().numpy())
+                    tops_list.append(top.cpu().numpy())
                     input_list.append(input_temp) #ground truth images
                     hr_list.append(hr) #grount truth
                     pred_list.append(preds)  #predicted high-resolution images
@@ -310,7 +317,7 @@ def main():
                 lats_hr = np.concatenate(lats_list, 0)
                 lons_hr = np.concatenate(lons_list, 0)
                 hr_list = np.concatenate(hr_list,0)
-               
+                top_list = np.concatenate(tops_list,0)
   
                 datetimes = []
                 for i in range(times.shape[0]):
@@ -323,6 +330,8 @@ def main():
                 intL = intL[:, 0,: ,:]
             if len(hr_list.shape) == 4:
                 hr_list = hr_list[:, 0,: ,:]
+            if len(top_list.shape) == 4:
+                top_list = top_list[:, 0,: ,:]
 
 
             ds = xr.Dataset(
@@ -332,7 +341,7 @@ def main():
                     hr = (["time", "lat", "lon"], hr_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
-                ),
+                    tops = (["time","lat","lon"], top_list)),
                 coords = dict(
                     time = datetimes,
                     pitch_idx = cidx,

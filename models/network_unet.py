@@ -10,6 +10,7 @@ from functools import reduce
 from operator import __add__
 
 
+
 class Conv2dSamePadding(nn.Conv2d):
     def __init__(self,*args,**kwargs):
         super(Conv2dSamePadding, self).__init__(*args, **kwargs)
@@ -53,6 +54,55 @@ class Upsampling(nn.Module):
     def forward(self, x:Tensor)->Tensor:
          return self.deconv_block(x)
 
+
+
+class Conv_top(nn.Module):
+
+    def __init__(self, in_channels:int = None, out_channels:int = None, kernel_size: int = 3, bias=True):
+        """
+        The convolutional block consists of one convolutional layer, bach normalization and activation function
+        :param in_channels : the number of input channels
+        :param kernel_size : the kernel size
+        :param padding     : the techniques for padding, either 'same' or 'valid' or integer
+        """
+        super().__init__()
+
+
+        self.conv_block1 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding="same", bias=bias),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+        self.conv_block2= nn.Sequential(
+            nn.Conv2d(out_channels, out_channels*2, kernel_size=kernel_size, padding="same", bias=bias),
+            nn.BatchNorm2d(out_channels*2),
+            nn.ReLU(inplace=True)
+        )
+
+
+        self.conv_block3= nn.Sequential(
+            nn.Conv2d(out_channels*2, out_channels*4, kernel_size=kernel_size, padding="same", bias=bias),
+            nn.BatchNorm2d(out_channels*4),
+            nn.ReLU(inplace=True)
+        )
+
+        self.maxpool_conv = nn.MaxPool2d(2)
+
+    def forward(self, x: Tensor)->Tensor:
+        #add noise
+        shape = x.shape
+        torch.manual_seed(10)
+        noise = torch.randn(shape)
+        x0 = torch.cat([noise, x], dim=1)
+        x1 = self.conv_block1(x0) #16, 8, 160, 160
+        m1 = self.maxpool_conv(x1)
+        x2 = self.conv_block2(m1)
+        m2 = self.maxpool_conv(x2)
+        x3 = self.conv_block3(m2)
+        m3 = self.maxpool_conv(x3)
+        
+        return m3
 
 class Conv_Block(nn.Module):
 
@@ -156,15 +206,18 @@ class UNet(nn.Module):
 
         """ bridge encoder <-> decoder """
         self.b1 = Conv_Block(channels_start * 4, channels_start * 8)
+        
+        #Topography encoder 
+        self.top = Conv_top(in_channels=2, out_channels=8, kernel_size=3, bias=True)
 
         """decoder """
-        self.up1 = Decode_Block(channels_start * 8, channels_start * 4)
-        self.up2 = Decode_Block(channels_start * 4, channels_start * 2)
-        self.up3 = Decode_Block(channels_start * 2, channels_start)
-        self.output = nn.Conv2d(channels_start, 1, kernel_size=1, bias=True)
+        self.up1 = Decode_Block(channels_start * 8 + 32, channels_start * 4 + 32)
+        self.up2 = Decode_Block(channels_start * 4 + 32, channels_start * 2 + 32)
+        self.up3 = Decode_Block(channels_start * 2 + 32, channels_start + 32)
+        self.output = nn.Conv2d(channels_start + 32, 1, kernel_size=1, bias=True)
         torch.nn.init.xavier_uniform(self.output.weight)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, topography: Tensor) -> Tensor:
         x = x.cuda()
         # print("input shape",x.shape)
         if self.dataset_type == 'precipitation':
@@ -174,7 +227,11 @@ class UNet(nn.Module):
         s2, e2 = self.down2(e1)
         s3, e3 = self.down3(e2)
         x4 = self.b1(e3)
-        d1 = self.up1(x4, s3)
+        top = self.top(topography)
+        #add the topograph to the neural network
+        x5 = torch.cat((x4, top), 1) #16，480， 20，20
+
+        d1 = self.up1(x5, s3)
         d2 = self.up2(d1, s2)
         d3 = self.up3(d2, s1)
         output = self.output(d3)

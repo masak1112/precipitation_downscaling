@@ -126,11 +126,12 @@ class BuildWGANModel:
                 if self.dataset_type == 'precipitation':
                     input_data = train_data['L'].to(device)
                     target_data = train_data['H'][:, None].to(device)
+                    top =  train_data["top"].to(device)
                 else:
                     input_data = train_data[0].to(device)
                     target_data = train_data[1].to(device)
 
-                generator_output = self.generator(input_data)
+                generator_output = self.generator(input_data,top)
                 critic_real = self.critic(target_data)
                 critic_fake = self.critic(generator_output)
 
@@ -150,7 +151,7 @@ class BuildWGANModel:
                 # -----------------
                 if jj == (i % self.hparams.critic_iterations):
 
-                    generator_output = self.generator(input_data)
+                    generator_output = self.generator(input_data,top)
 
                     critic_fake = self.critic(generator_output)
 
@@ -222,13 +223,14 @@ class BuildWGANModel:
             if self.dataset_type == 'precipitation':
                 input_data = train_data['L'].to(device)
                 target_data = train_data['H'][:, None].to(device)
+                top = train_data["top"].to(device)
             else:
                 input_data = train_data[0].to(device)
                 target_data = train_data[1].to(device)
 
             target_data = target_data.to(device)
 
-            generator_output = self.generator(input_data)
+            generator_output = self.generator(input_data, top)
             critic_real = self.critic(target_data)
             critic_fake = self.critic(generator_output)
 

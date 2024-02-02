@@ -163,6 +163,7 @@ class BuildModel:
 
         self.L = data['L'].cuda()
         self.top = data["top"]
+        print("self.top in feed daba",self.top.shape)
     
         if self.diffusion:
             upsampling = Upsampling(in_channels = 8)
@@ -180,7 +181,7 @@ class BuildModel:
     def netG_forward(self,idx=None):
 
         if not self.diffusion:
-            self.E = self.netG(self.L) #[:,0,:,:]
+            self.E = self.netG(self.L, self.top) #[:,0,:,:]
             #print("The prediction shape (E):", self.E.cpu().numpy().shape)
             #print("The min of prediction", np.min(self.E.detach().cpu().numpy()))
             #print("The max of prediction", np.max(self.E.detach().cpu().numpy()))
@@ -191,7 +192,6 @@ class BuildModel:
             
             self.hr = self.H
             h_shape = self.H.shape
-            print("h_shape",h_shape)
 
             
             t = torch.randint(0, 200, (h_shape[0],), device = device).long()
@@ -217,7 +217,7 @@ class BuildModel:
                     with open('example_5132_idx_{}_t_{}.pkl'.format(idx,i),'wb') as f:
                         pickle.dump(noise_image, f)
                             
-            self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t)
+            self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t, self.top)
 
             self.H = noise #if using difussion, the output is not the prediction values, but the predicted noise
 
@@ -297,14 +297,14 @@ class BuildModel:
                 # -------------------------------
                 # 4) Save model
                 # -------------------------------
-                if (current_step % self.save_freq) == 0 and current_step>60000:
+                if (current_step % self.save_freq) == 0 and current_step>30000:
                     self.save(current_step)
                     print("Model Saved")
                     print("learnign rate",lr)
                     print("Time per step:", time.time() - st)
                 wandb.log({"loss": self.G_loss, "lr": lr})
             
-            self.save(current_step)
+        self.save(current_step)
 
             # with torch.no_grad():
             #     val_loss = 0
