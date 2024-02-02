@@ -113,8 +113,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.dt_top = xr.open_dataset("/p/project/deepacf/maelstrom/data/ap5/downscaling_ifs2radklim/srtm_data/topography_srtm_ifs2radklim.nc")
     
 
-        if self.mode == "train":
-            #and not os.path.exists(stat_file):
+        if self.mode == "train" and not os.path.exists(stat_file):
             
             self.vars_in_patches_min = [] 
             self.vars_in_patches_max = [] 
