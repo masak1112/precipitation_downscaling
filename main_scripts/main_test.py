@@ -109,6 +109,7 @@ def main():
             pred_50_list = []
             pred_150_list = []
             pred_last_list = []
+            tops_list = [] 
             for i, test_data in enumerate(test_loader):
                 idx += 1
                 batch_size = test_data["L"].shape[0]
@@ -194,6 +195,7 @@ def main():
                 pred_50_list.append(sample_50)
                 pred_150_list.append(sample_150)
                 hr_list.append(hr) #grount truth
+                tops_list.append(top.cpu().numpy())
         
         cidx = np.squeeze(np.concatenate(cidx_list,0))
         times = np.concatenate(times_list,0)
@@ -209,6 +211,7 @@ def main():
         lats_hr = np.concatenate(lats_list, 0)
         lons_hr = np.concatenate(lons_list, 0)
         hr_list = np.concatenate(hr_list,0)
+        top_list = np.concatenate(tops_list,0)
 
                 
         datetimes = []
@@ -229,7 +232,8 @@ def main():
             intL = intL[:, 0,: ,:]
         if len(hr_list.shape) == 4:
             hr_list = hr_list[:, 0,: ,:]
-
+        if len(top_list.shape) == 4:
+            top_list = top_list[:, 0,: ,:]
 
 
         noiseP = np.concatenate(noise_pred_list,0)
@@ -240,17 +244,19 @@ def main():
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
-                    fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
-                    fcast_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
-                    fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
-                    fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
-                    fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
                     hr = (["time", "lat", "lon"], hr_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
-                    ),
+                     tops = (["time","lat","lon"], top_list)
+                     ),
+                    # fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
+                    # fcast_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
+                    # fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
+                    # fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
+                    # fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
+                   
                 coords = dict(
                     time = datetimes,
                     pitch_idx = cidx,
