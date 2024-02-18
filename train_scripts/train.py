@@ -297,7 +297,8 @@ class BuildModel:
                 # -------------------------------
                 # 4) Save model
                 # -------------------------------
-                if (current_step % self.save_freq) == 0 and current_step>30000:
+                if (current_step % self.save_freq) == 0 :
+                #and current_step>30000:
                     self.save(current_step)
                     print("Model Saved")
                     print("learnign rate",lr)

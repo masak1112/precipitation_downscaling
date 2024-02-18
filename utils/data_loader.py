@@ -5,7 +5,9 @@
 
 from torch.utils.data import DataLoader
 from dataset_prep import PrecipDatasetInter
+from dataset_prep_local import PrecipCorrDatasetInter
 from main_scripts.dataset_temp import CustomTemperatureDataset
+from dataset_prep_local import PrecipCorrDatasetInter
 
 def create_loader(file_path: str = None,
                   batch_size: int = 32,
@@ -33,16 +35,20 @@ def create_loader(file_path: str = None,
         #vars_in = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in","u700_in","v700_in","yw_hourly_in"]
         vars_in = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in","yw_hourly_in"]
         vars_out =  ["yw_hourly_tar"]
-        dataset = PrecipDatasetInter(file_path,
-                                     batch_size,
-                                     patch_size,
-                                     vars_in,
-                                     vars_out,
-                                     sf,
-                                     seed,
-                                     k,
-                                     mode,
-                                     stat_path)
+        # dataset = PrecipDatasetInter(file_path,
+        #                              batch_size,
+        #                              patch_size,
+        #                              vars_in,
+        #                              vars_out,
+        #                              sf,
+        #                              seed,
+        #                              k,
+        #                              mode,
+        #                              stat_path)
+
+        dataset = PrecipCorrDatasetInter(file_path = file_path, 
+                                        stat_path="/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train", 
+                                        )
         dataloader = DataLoader(dataset, batch_size=None)
     elif dataset_type == "temperature":
         dataset = CustomTemperatureDataset(file_path=file_path, verbose=verbose)

@@ -17,6 +17,7 @@ from models.network_swinunet_sys import SwinTransformerSys as swinUnet
 from models.network_diffusion  import UNet_diff
 from models.diffusion_utils import GaussianDiffusion
 from models.network_critic import Discriminator as critic
+from models.network_unet_correction import Unet_correction as unet_correction
 
 
 def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
@@ -24,6 +25,9 @@ def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
     # Define the models
     if type_net == "unet":
         netG = unet(n_channels = n_channels,dataset_type=dataset_type)
+
+    if type_net == "unet_correction":
+        netG = unet_correction(n_channels=1, dataset_type=dataset_type)
 
     elif type_net == "swinir":
         netG = swinIR(img_size=img_size,

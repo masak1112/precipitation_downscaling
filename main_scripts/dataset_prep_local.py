@@ -78,6 +78,8 @@ class PrecipCorrDatasetInter(torch.utils.data.IterableDataset):
         print("The total number of samples after filtering NaN values:", len(self.vars_in_patches_list))
         
         self.n_samples = len(self.vars_in_patches_list)
+   
+        self.idx_perm = np.arange(0, self.n_samples)
         #print("var_out size",self.vars_out_patches_list)
  
 
@@ -116,14 +118,17 @@ class PrecipCorrDatasetInter(torch.utils.data.IterableDataset):
         return da_in, da_out, times, lats,lons, tops
 
 
+
+
     def __iter__(self):
  
         
         iter_start, iter_end = 0, int(self.idx/self.batch_size)-1 
+ 
         self.idx = 0
-        self.lons = torch.from_numpy(self.lons)
-        self.lats = torch.from_numpy(self.lats)
-        self.tops = torch.from_numpy(self.tops)
+        lon = torch.from_numpy(self.lons)
+        lat = torch.from_numpy(self.lats)
+        top = torch.from_numpy(self.tops)
         #min-max score
         def normalize(x, x_min,x_max):
             return ((x - x_min)/(x_max-x_min))
@@ -143,16 +148,15 @@ class PrecipCorrDatasetInter(torch.utils.data.IterableDataset):
             lons = torch.zeros(self.batch_size, 160)
 
             for jj in range(self.batch_size):
-
-                cid = self.idx
-
+                print("idx",self.idx)
+                cid = self.idx_perm[self.idx]
                 x[jj] = (self.vars_in_patches_list[cid] - self.vars_out_patches_mean) / self.vars_out_patches_std
                 y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_mean) / self.vars_out_patches_std
                 t[jj] = self.times_patches_list[cid]
-                lats[jj] = self.lats[cid]
-                lons[jj] = self.lons[cid]
+                lats[jj] = lat[cid]
+                lons[jj] = lon[cid]
                 cidx[jj] = torch.tensor(cid, dtype=torch.int)
-                x_top[jj] = normalize(self.tops[cid], -182, 3846)
+                x_top[jj] = normalize(top[cid], -182, 3846)
 
                 self.idx += 1
 
