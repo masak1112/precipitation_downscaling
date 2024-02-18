@@ -249,7 +249,7 @@ def main():
                     hr = (["time", "lat", "lon"], hr_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
-                     tops = (["time","lat","lon"], top_list)
+                    tops = (["time","lat","lon"], top_list)
                      ),
                     # fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
                     # fcast_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
@@ -291,17 +291,19 @@ def main():
                     #Get the low resolution inputs
                     input_vars = test_data["L"]
                     input_temp = input_vars.cpu().numpy()
-                    input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min )+ vars_in_patches_min 
-                    input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+                    #input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min )+ vars_in_patches_min 
+                    #input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
                     model.netG_forward(i)
                     #Get the prediction values
-                    preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                    preds = np.exp(preds+np.log(args.k))-args.k
+                    preds = model.E.cpu().numpy()
+                    # * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    #preds = np.exp(preds+np.log(args.k))-args.k
 
                     #Get the groud truth values
-                    hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                    hr = np.exp(hr+np.log(args.k))-args.k
+                    hr = test_data["H"].cpu().numpy() 
+                    #* (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    #hr = np.exp(hr+np.log(args.k))-args.k
                     
                     #get the raw topograph data
                     top = top *(3846+182) -182
