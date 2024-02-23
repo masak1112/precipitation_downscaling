@@ -37,7 +37,7 @@ def main():
     parser.add_argument("--save_dir", type = str, help = "The output directory")
     parser.add_argument("--dataset_type", type=str, default="precipitation", help="The dataset type: temperature, precipitation")
     parser.add_argument("--model_type", type = str, default = "unet", help = "The model type: unet, swinir")
-    parser.add_argument("--k", type = int, default = 0.95, help = "The parameter for log-transform")
+    parser.add_argument("--k", type = int, default = 0.8, help = "The parameter for log-transform")
     parser.add_argument("--stat_dir", type = str, required = True,
                         default = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/train",
                         help = "The directory where the statistics json file of training data is stored")    
@@ -46,7 +46,7 @@ def main():
     args = parser.parse_args()
 
 
-    stat_file = "statistics_k095.json"
+    stat_file = "statistics_k08.json"
 
     #some parameters for diffusion models
     if args.model_type == "diffusion":

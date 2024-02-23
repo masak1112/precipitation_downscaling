@@ -39,7 +39,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  vars_out       : list = ["yw_hourly_tar"], 
                  sf             : int = 10,
                  seed           : int = 1234, 
-                 k              : float = 0.95, 
+                 k              : float = 0.8, 
                  mode           : str = "train",
                  stat_path      : str = None,
                  local          : bool = False):
@@ -70,7 +70,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.k = k 
         self.mode = mode
         self.stat_path = stat_path
-        self.stat_file = "statistics_k095.json"
+        self.stat_file = "statistics_k08.json"
         
         #initialise the list to store the inputs and outputs
         self.vars_in_patches_list = []
@@ -156,7 +156,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.n_samples = len(self.vars_in_patches_list)
         #print("var_out size",self.vars_out_patches_list)
         
-        if self.mode == "test":
+        if self.mode == "train":
             self.idx_perm = self.shuffle() 
         else:
             self.idx_perm = np.arange(1, self.n_samples)
