@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --output=train-diffusion-out.%j
 #SBATCH --error=train-diffusion-err.%j
-#SBATCH --time=00:20:00
+#SBATCH --time=20:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --partition=booster
 #SBATCH --mail-type=ALL
@@ -20,10 +20,10 @@ module load netcdf4-python/1.5.7
 source ../sc_venv_template/venv/bin/activate
 
 
-save_dir=../results/exp_20230828_diffusion
+save_dir=../results/exp_20231203_diffusion_t4_newscale2_only_rain_t02_yan_zscore_k095_top
 train_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train
 val_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/val
 epochs=20
 model_type=diffusion
 
-srun --overlap python ../main_scripts/main_train.py --train_dir ${train_dir} --val_dir ${val_dir} --save_dir ${save_dir} --epochs ${epochs} --model_type ${model_type} 
+srun --overlap python ../main_scripts/main_train.py --train_dir ${train_dir} --val_dir ${val_dir} --save_dir ${save_dir} --epochs ${epochs} --model_type ${model_type}  

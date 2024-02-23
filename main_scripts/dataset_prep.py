@@ -39,7 +39,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  vars_out       : list = ["yw_hourly_tar"], 
                  sf             : int = 10,
                  seed           : int = 1234, 
-                 k              : float = 0.5, 
+                 k              : float = 0.95, 
                  mode           : str = "train",
                  stat_path      : str = None,
                  local          : bool = False):
@@ -70,6 +70,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.k = k 
         self.mode = mode
         self.stat_path = stat_path
+        self.stat_file = "statistics_k095.json"
         
         #initialise the list to store the inputs and outputs
         self.vars_in_patches_list = []
@@ -106,15 +107,14 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list = self.process_netcdf(files)
 
         print('self.times_patches_list: {}'.format(self.times_patches_list))
-        stat_file = os.path.join(stat_path, "statistics.json")
+        stat_file = os.path.join(stat_path, self.stat_file)
 
 
         #get the topography dataset
         self.dt_top = xr.open_dataset("/p/project/deepacf/maelstrom/data/ap5/downscaling_ifs2radklim/srtm_data/topography_srtm_ifs2radklim.nc")
     
 
-        if self.mode == "train":
-            #and not os.path.exists(stat_file):
+        if self.mode == "train" and not os.path.exists(stat_file):
             
             self.vars_in_patches_min = [] 
             self.vars_in_patches_max = [] 
@@ -162,7 +162,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.idx_perm = np.arange(1, self.n_samples)
         
     def save_stats(self):
-        output_file = os.path.join(self.stat_path, "statistics.json")
+        output_file = os.path.join(self.stat_path, self.stat_file)
         stats = {}
         for i in range(len(self.vars_in)):
             key = self.vars_in[i]+'_min'
