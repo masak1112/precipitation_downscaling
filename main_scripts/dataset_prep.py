@@ -39,7 +39,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  vars_out       : list = ["yw_hourly_tar"], 
                  sf             : int = 10,
                  seed           : int = 1234, 
-                 k              : float = 0.5, 
+                 k              : float = 0.95, 
                  mode           : str = "train",
                  stat_path      : str = None,
                  local          : bool = False):
@@ -106,7 +106,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list = self.process_netcdf(files)
 
         print('self.times_patches_list: {}'.format(self.times_patches_list))
-        stat_file = os.path.join(stat_path, "statistics.json")
+        stat_file = os.path.join(stat_path, "statistics_095.json")
 
 
         #get the topography dataset
