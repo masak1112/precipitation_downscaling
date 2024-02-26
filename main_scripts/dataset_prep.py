@@ -106,7 +106,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list = self.process_netcdf(files)
 
         print('self.times_patches_list: {}'.format(self.times_patches_list))
-        stat_file = os.path.join(stat_path, "statistics_095.json")
+        stat_file = os.path.join(stat_path, "statistics_k095.json")
 
 
         #get the topography dataset
