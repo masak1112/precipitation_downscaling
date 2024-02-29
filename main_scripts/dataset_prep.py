@@ -106,15 +106,14 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.vars_in_patches_list, self.vars_out_patches_list, self.times_patches_list = self.process_netcdf(files)
 
         print('self.times_patches_list: {}'.format(self.times_patches_list))
-        stat_file = os.path.join(stat_path, "statistics_k095.json")
+        stat_file = os.path.join(stat_path, "statistics_harris.json")
 
 
         #get the topography dataset
         self.dt_top = xr.open_dataset("/p/project/deepacf/maelstrom/data/ap5/downscaling_ifs2radklim/srtm_data/topography_srtm_ifs2radklim.nc")
     
 
-        if self.mode == "train":
-            #and not os.path.exists(stat_file):
+        if self.mode == "train" and not os.path.exists(stat_file):
             
             self.vars_in_patches_min = [] 
             self.vars_in_patches_max = [] 
@@ -151,7 +150,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         
 
         print("The total number of samples after filtering NaN and zeros values:", len(self.vars_in_patches_list))
-        
 
         self.n_samples = len(self.vars_in_patches_list)
         #print("var_out size",self.vars_out_patches_list)
@@ -162,7 +160,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.idx_perm = np.arange(1, self.n_samples)
         
     def save_stats(self):
-        output_file = os.path.join(self.stat_path, "statistics.json")
+
+        output_file = os.path.join(self.stat_path, "statistics_harris.json")
         stats = {}
         for i in range(len(self.vars_in)):
             key = self.vars_in[i]+'_min'
@@ -187,7 +186,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         with open(output_file,'w') as f:
             json.dump(stats, f)
         print("The statistic has been stored to the json file: ", output_file)
-
 
 
     def process_netcdf(self, filenames: int = None, local=False):
@@ -309,16 +307,15 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
     
         for i in range(vars_out_patches.shape[0]):
             #remove Nan values and no rain images
-            if (not torch.isnan(vars_out_patches[i]).any()) and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device):
+            if (not torch.isnan(vars_out_patches[i]).any()) and torch.max(vars_out_patches[i])>=torch.tensor(1).to(device):
                 no_nan_idx.append(i) 
-
 
         #Yan's method
         # log-transform -> log(x+k)-log(k)
         # print("vars_in_patches[self._prcp_indexes] ", vars_in_patches[self._prcp_indexes] )
         # print("torch.log(torch.tensor(self.k).to(device)",torch.log(torch.tensor(self.k).to(device)))
-        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  torch.tensor(self.k).to("cpu")) -torch.log(torch.tensor(self.k).to("cpu"))
-        vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
+        #vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  torch.tensor(self.k).to("cpu")) -torch.log(torch.tensor(self.k).to("cpu"))
+        #vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
 
         # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.log(torch.tensor(self.k).to("cpu")))
         # vars_out_patches= torch.log10(vars_out_patches+ torch.log(torch.tensor(self.k).to("cpu")))
@@ -332,8 +329,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
     
         ## Harris paper data preprocessing method
-        # inputs_nparray[self._prcp_indexes] = np.log10(inputs_nparray[self._prcp_indexes]+1)
-        # outputs_nparray = np.log10(outputs_nparray+1)
+        vars_in_patches[self._prcp_indexes] = np.log10(vars_in_patches[self._prcp_indexes]+1)
+        vars_out_patches = np.log10(vars_out_patches+1)
         # print('inputs_nparray shape: {}'.format(inputs_nparray.shape))
         # print('inputs_nparray[self._prcp_indexes] shape: {}'.format(inputs_nparray[self._prcp_indexes].shape))
 
@@ -476,7 +473,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 print("len of vars in", len(self.vars_in_patches_min))
                 for i in range(len(self.vars_in_patches_min)):
                     #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
-                     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
 
                 # for i in range(len(self.vars_in_patches_min)):
                 #     if i not in self._prcp_indexes:
@@ -486,7 +483,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 # data transformation based on leinnon 2023 paperf
                 y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
                 #y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
-                # y[jj] = self.vars_out_patches_list[cid]
+                #y[jj] = self.vars_out_patches_list[cid]
 
                 t[jj] = self.times_patches_list[cid]
                 lats_lons_cid = cid%self.num_patches_img 

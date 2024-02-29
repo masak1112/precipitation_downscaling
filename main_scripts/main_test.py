@@ -76,7 +76,7 @@ def main():
                                 batch_size=8)
     
     #Get and load the statistics information from the training directory for denormalisation
-    stat_file = os.path.join(args.stat_dir, "statistics.json")
+    stat_file = os.path.join(args.stat_dir, "statistics_harris.json")
     print("The statsitics json files is opened from", stat_file)
     
     with open(stat_file,'r') as f:
@@ -130,7 +130,7 @@ def main():
                 #input_temp = input_vars[:,-1,:,:].cpu().numpy()
                 input_temp = input_vars[:,-1,:,:].cpu().numpy()
                 input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
-                input_temp = np.exp(input_temp+np.log(args.k))-args.k
+                #input_temp = np.exp(10, input_temp)-1
  
 
                 with torch.no_grad():
@@ -156,7 +156,7 @@ def main():
                 #sample_last_clip = (sample_last + 1)/2
                 preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 #log-transform -> log(x+k)-log(k)
-                preds =np.exp(preds+np.log(args.k))-args.k
+                #preds =np.exp(10, preds)-1
 
                 sample_first = samples[0].cpu().numpy()
 
@@ -171,7 +171,7 @@ def main():
                 #all_sample_list = all_sample_list.append(sample_last)
                 #preds = sample_last.cpu().numpy()
     
-    
+
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise
                 noise_pred = model.E.cpu().numpy() #predict the noise
@@ -179,7 +179,7 @@ def main():
                 #hr = model.hr.cpu().numpy()
 
                 hr = (model.hr.cpu().numpy()) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
-                hr = np.exp(hr+np.log(args.k))-args.k
+                #hr = np.exp(10, hr)-1
                 
             
                 input_list.append(input_temp) #ground truth images
