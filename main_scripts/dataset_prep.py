@@ -307,7 +307,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
     
         for i in range(vars_out_patches.shape[0]):
             #remove Nan values and no rain images
-            if (not torch.isnan(vars_out_patches[i]).any()) and torch.max(vars_out_patches[i])>=torch.tensor(1).to(device):
+            if (not torch.isnan(vars_out_patches[i]).any()) and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device):
                 no_nan_idx.append(i) 
 
         #Yan's method
