@@ -18,9 +18,9 @@ module load xarray/0.20.1
 source ../sc_venv_template/venv/bin/activate
 
 train_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train
-test_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/test
-checkpoint=../results/exp_20230828_diffusion_harris_std/103960_G.pth
-save_dir=../results/exp_20230828_diffusion_harris_std_test
+test_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/test_small
+checkpoint=../results/exp_20230828_diffusion_harris_threshold2/75780_G.pth
+save_dir=../results/exp_20230828_diffusion_harris_threshold2_test
 model_type=diffusion
 
 srun --overlap python ../main_scripts/main_test.py --test_dir ${test_dir} --stat_dir ${train_dir} --checkpoint ${checkpoint}  --save_dir ${save_dir} --model_type ${model_type} 
