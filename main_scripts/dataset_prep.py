@@ -156,7 +156,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.n_samples = len(self.vars_in_patches_list)
         #print("var_out size",self.vars_out_patches_list)
         
-        if self.mode == "test":
+        if self.mode == "train":
             self.idx_perm = self.shuffle() 
         else:
             self.idx_perm = np.arange(1, self.n_samples)
@@ -317,7 +317,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # log-transform -> log(x+k)-log(k)
         # print("vars_in_patches[self._prcp_indexes] ", vars_in_patches[self._prcp_indexes] )
         # print("torch.log(torch.tensor(self.k).to(device)",torch.log(torch.tensor(self.k).to(device)))
-        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  torch.tensor(self.k).to("cpu")) -torch.log(torch.tensor(self.k).to("cpu"))
+        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  
+                                                              torch.tensor(self.k).to("cpu")) -torch.log(torch.tensor(self.k).to("cpu"))
         vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
 
         # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.log(torch.tensor(self.k).to("cpu")))
@@ -504,7 +505,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
           
                 tops = torch.from_numpy(np.expand_dims(np.transpose(tops,(1,0)),0))
 
-                
                 x_top[jj] = normalize(tops, -182, 3846)
                 cidx[jj] = torch.tensor(cid, dtype=torch.int)
 

@@ -105,9 +105,9 @@ def main():
             lats_list = []       #lats
             lons_list = []       #lons
             pred_first_list = []
-            pred_100_list = []
-            pred_50_list = []
-            pred_150_list = []
+            # pred_100_list = []
+            # pred_50_list = []
+            # pred_150_list = []
             pred_last_list = []
             for i, test_data in enumerate(test_loader):
                 idx += 1
@@ -136,7 +136,7 @@ def main():
                 with torch.no_grad():
                     model.netG_forward(i)
                 
-                gd = GaussianDiffusion(conditional=True, timesteps=200, model=model.netG)
+                gd = GaussianDiffusion(conditional=True, timesteps=80, model=model.netG)
                 #now, we only use the unconditional difussion model, meaning the inputs are only noise.
                 #This is the first test, later, we will figure out how to use conditioanl difussion model.
                 print("Start reverse process")
@@ -160,13 +160,13 @@ def main():
 
                 sample_first = samples[0].cpu().numpy()
 
-                sample_50 = samples[50].cpu().numpy()
+                # sample_50 = samples[50].cpu().numpy()
 
 
-                sample_100 = samples[100].cpu().numpy()
+                # sample_100 = samples[100].cpu().numpy()
 
 
-                sample_150 = samples[150].cpu().numpy()
+                # sample_150 = samples[150].cpu().numpy()
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 #preds = sample_last.cpu().numpy()
@@ -190,9 +190,9 @@ def main():
                 pred_list.append(preds)  #predicted high-resolution images
                 pred_last_list.append(sample_last)
                 pred_first_list.append(sample_first)
-                pred_100_list.append(sample_100)
-                pred_50_list.append(sample_50)
-                pred_150_list.append(sample_150)
+                # pred_100_list.append(sample_100)
+                # pred_50_list.append(sample_50)
+                # pred_150_list.append(sample_150)
                 hr_list.append(hr) #grount truth
         
         cidx = np.squeeze(np.concatenate(cidx_list,0))
@@ -200,9 +200,9 @@ def main():
         pred = np.concatenate(pred_list,0)
         pred_last = np.concatenate(pred_last_list,0)
         pred_first = np.concatenate(pred_first_list,0)
-        pred_50 = np.concatenate(pred_50_list,0)
-        pred_100 = np.concatenate(pred_100_list,0)
-        pred_150 = np.concatenate(pred_150_list,0)
+        # pred_50 = np.concatenate(pred_50_list,0)
+        # pred_100 = np.concatenate(pred_100_list,0)
+        # pred_150 = np.concatenate(pred_150_list,0)
         pred = np.concatenate(pred_list,0)
         ref = np.concatenate(ref_list,0)
         intL = np.concatenate(input_list,0)
@@ -218,9 +218,9 @@ def main():
 
         if len(pred.shape) == 4:
             pred = pred[:, 0 , : ,:]
-            pred_50 = pred_50[:, 0 , : ,:]
-            pred_100 = pred_100[:, 0 , : ,:]
-            pred_150 = pred_150[:, 0 , : ,:]
+            #pred_50 = pred_50[:, 0 , : ,:]
+            #pred_100 = pred_100[:, 0 , : ,:]
+            #pred_150 = pred_150[:, 0 , : ,:]
             pred_first = pred_first[:, 0 , : ,:]
             pred_last = pred_last[:, 0 , : ,:]
         if len(ref.shape) == 4:
@@ -242,9 +242,9 @@ def main():
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
                     fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
                     fcast_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
-                    fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
-                    fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
-                    fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
+                    #fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
+                    #fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
+                    #fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
                     hr = (["time", "lat", "lon"], hr_list),
