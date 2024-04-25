@@ -652,6 +652,55 @@ class UpsampleOneStep(nn.Sequential):
         return flops
 
 
+class Conv_top(nn.Module):
+
+    def __init__(self, in_channels:int = None, out_channels:int = None, kernel_size: int = 3, bias=True):
+        """
+        The convolutional block consists of one convolutional layer, bach normalization and activation function
+        :param in_channels : the number of input channels
+        :param kernel_size : the kernel size
+        :param padding     : the techniques for padding, either 'same' or 'valid' or integer
+        """
+        super().__init__()
+
+
+        self.conv_block1 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding="same", bias=bias),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+        self.conv_block2= nn.Sequential(
+            nn.Conv2d(out_channels, out_channels*2, kernel_size=kernel_size, padding="same", bias=bias),
+            nn.BatchNorm2d(out_channels*2),
+            nn.ReLU(inplace=True)
+        )
+
+
+        self.conv_block3= nn.Sequential(
+            nn.Conv2d(out_channels*2, out_channels*4, kernel_size=kernel_size, padding="same", bias=bias),
+            nn.BatchNorm2d(out_channels*4),
+            nn.ReLU(inplace=True)
+        )
+
+        self.maxpool_conv = nn.MaxPool2d(2)
+
+    def forward(self, x):
+        #add noise
+        shape = x.shape
+        torch.manual_seed(10)
+        noise = torch.randn(shape)
+        x0 = torch.cat([noise, x], dim=1)
+        x1 = self.conv_block1(x0) #16, 8, 160, 160
+        m1 = self.maxpool_conv(x1)
+        x2 = self.conv_block2(m1)
+        m2 = self.maxpool_conv(x2)
+        #x3 = self.conv_block3(m2)
+        #m3 = self.maxpool_conv(x3)
+        
+        return m2
+
+
 class SwinIR(nn.Module):
     """ SwinIR
         A PyTorch impl of : `SwinIR: Image Restoration Using Swin Transformer`, based on Swin Transformer.
@@ -685,7 +734,8 @@ class SwinIR(nn.Module):
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-                 use_checkpoint=False, upscale=4, img_range=1., upsampler='', resi_connection='1conv',
+                 use_checkpoint=False, upscale=4, img_range=1., upsampler='', 
+                 resi_connection='1conv',
                  dataset_type="precipitation",
                  **kwargs):
         super(SwinIR, self).__init__()
@@ -693,6 +743,7 @@ class SwinIR(nn.Module):
         num_in_ch = in_chans
         num_out_ch = 1 
         num_feat = 96
+
         #num_feat = 100
         self.img_range = img_range
         if in_chans == 3:
@@ -770,6 +821,9 @@ class SwinIR(nn.Module):
             self.layers.append(layer)
         self.norm = norm_layer(self.num_features)
 
+
+        self.top = Conv_top(in_channels=2, out_channels=8, kernel_size=3, bias=True)
+
         # build the last conv layer in deep feature extraction
         if resi_connection == '1conv':
             self.conv_after_body = nn.Conv2d(embed_dim, embed_dim, 3, 1, 1)
@@ -787,8 +841,8 @@ class SwinIR(nn.Module):
             # for classical SR
             self.conv_before_upsample = nn.Sequential(nn.Conv2d(embed_dim, num_feat, 3, 1, 1),
                                                       nn.LeakyReLU(inplace=True))
-            self.upsample = Upsample(upscale, num_feat)
-            self.conv_last = nn.Conv2d(num_feat, 1, 3, 1, 1)
+            self.upsample = Upsample(upscale, num_feat + 16)
+            self.conv_last = nn.Conv2d(num_feat+16, 1, 3, 1, 1)
             print('self.conv_last: {}'.format(self.conv_last))
         elif self.upsampler == 'pixelshuffledirect':
             # for lightweight SR (to save parameters)
@@ -850,7 +904,11 @@ class SwinIR(nn.Module):
 
         return x
 
-    def forward(self, x):
+    def forward(self,  x, topography):
+        """
+        x: the input image
+        top: the topography data
+        """
         # remap for the first upsampling
         if self.dataset_type == "precipitation":
             x = self.upsampling_first(x)
@@ -865,21 +923,27 @@ class SwinIR(nn.Module):
         #print("x max:", torch.max(x))
         #print("x min", torch.min(x))
         if self.upsampler == 'pixelshuffle':
+            print("The models use pixelshuffle upsampler")
             # for classical SR
             x = self.conv_first(x)
             #print("after conv_first",x.shape)
             x = self.conv_after_body(self.forward_features(x)) + x
             x = self.conv_before_upsample(x)
+            #print("x after conv_before_usamplg shape", x.shape)
+            top = self.top(topography)
+            #print("topgraphy after conv_before_usamplg shape", top.shape)
+            x = torch.cat((x, top), 1) 
             x = self.upsample(x)
-        
             x = self.conv_last(x)
         elif self.upsampler == 'pixelshuffledirect':
+            print("The models use pixelshuffledirect upsampler")
             # for lightweight SR
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x)) + x
             x = self.upsample(x)
         elif self.upsampler == 'nearest+conv':
             # for real-world SR
+            print("The models use nearest+conv upsampler")
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x)) + x
             x = self.conv_before_upsample(x)
@@ -887,6 +951,7 @@ class SwinIR(nn.Module):
             x = self.lrelu(self.conv_up2(torch.nn.functional.interpolate(x, scale_factor=2, mode='nearest')))
             x = self.conv_last(self.lrelu(self.conv_hr(x)))
         else:
+            print("The models use other upsampler")
             # for image denoising and JPEG compression artifact reduction
             x_first = self.conv_first(x)
             res = self.conv_after_body(self.forward_features(x_first)) + x_first

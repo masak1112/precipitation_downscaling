@@ -35,7 +35,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                  batch_size     : int = 32, 
                  patch_size     : int = 16,
                  vars_in        : list = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in",
-                                  "u700_in","v700_in","yw_hourly_in"],
+                                  "u700_in","v700_in"],
                  vars_out       : list = ["yw_hourly_tar"], 
                  sf             : int = 10,
                  seed           : int = 1234, 
@@ -196,10 +196,13 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         """
         print("Loading data from the file:", filenames)
         dt = xr.open_mfdataset(filenames)
-
         
         # get input variables, and select the regions
         inputs = dt[self.vars_in].isel(lon = slice(2, 114)).sel(lat = slice(47.5, 60))
+        #Add new variables tp in to the datasets
+        # inputs["tp"] = 
+
+
         #inputs = dt[self.vars_in].sel(lon = slice(10, 12)).sel(lat = slice(50, 52))
         lats = inputs["lat"].values
         lons = inputs["lon"].values
@@ -474,7 +477,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             for jj in range(self.batch_size):
                 
                 cid = self.idx_perm[self.idx]
-                print("len of vars in", len(self.vars_in_patches_min))
                 for i in range(len(self.vars_in_patches_min)):
                     #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
                      x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
