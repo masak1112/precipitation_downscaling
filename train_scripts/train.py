@@ -28,8 +28,6 @@ cuda = True if torch.cuda.is_available() else False
 pname = "./logs/profile"
 
 
-
-
 class BuildModel:
     def __init__(self, netG,
                  save_dir    : str = "../results",
@@ -193,7 +191,6 @@ class BuildModel:
             self.hr = self.H
             h_shape = self.H.shape
 
-            
             t = torch.randint(0, 200, (h_shape[0],), device = device).long()
    
             noise = torch.randn_like(self.hr)

@@ -195,15 +195,20 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         
         # get input variables, and select the regions
         inputs = dt[self.vars_in[:-1]].isel(lon = slice(2, 114)).sel(lat = slice(47.5, 60))
+        print("There is done")
         #Add new variables tp in to the datasets
-        tp =  [((inputs["cp_in"][i] +inputs["lsp_in"][i])*1000-(inputs["cp_in"][i-1] +inputs["lsp_in"][i-1])*1000).values 
-               for i in range(len(inputs.time))]
+        #tp =  [((inputs["cp_in"][i] +inputs["lsp_in"][i])*1000 - (inputs["cp_in"][i-1] + inputs["lsp_in"][i-1])*1000)
+        #       for i in range(len(inputs.time))]
         
+        cp = inputs["cp_in"].diff(dim="time") * 1000
+        lsp = inputs["lsp_in"].diff(dim="time") *1000
+
+        print("cp",cp)
         #replace nan with zero values
-        inputs["tp"] = (['time', 'lat', 'lon'], tp)
-        #print("inputs",inputs)
+        inputs = inputs.assign(tp=cp+lsp)
+        #inputs["tp"] = (['time', 'lat', 'lon'], tp)
+        print("inputs",inputs)
     
- 
         #inputs = dt[self.vars_in].sel(lon = slice(10, 12)).sel(lat = slice(50, 52))
         lats = inputs["lat"].values
         lons = inputs["lon"].values
@@ -229,7 +234,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         outputs_nparray = output.to_array(dim = "variables").squeeze().values.astype(np.float32)
         # log-transform -> log(x+k)-log(k)
         
-        inputs_nparray = np.nan_to_num(inputs_nparray, nan=0)
+        #inputs_nparray = np.nan_to_num(inputs_nparray, nan=0)
 
         da_in = torch.from_numpy(inputs_nparray)
         da_out = torch.from_numpy(outputs_nparray)
@@ -330,12 +335,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         print("pre indexes are",self._prcp_indexes)
         
         print("var_in_patches",vars_in_patches[:,6,:,:])
-        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) +  
-                                                              torch.tensor(self.k).to("cpu")) - torch.log(torch.tensor(self.k).to("cpu"))
+        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.tensor(self.k).to("cpu")) - torch.log(torch.tensor(self.k).to("cpu"))
         
 
-        vars_out_patches= torch.log(vars_out_patches+
-                                    torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
+        vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
 
         # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.log(torch.tensor(self.k).to("cpu")))
         # vars_out_patches= torch.log10(vars_out_patches+ torch.log(torch.tensor(self.k).to("cpu")))

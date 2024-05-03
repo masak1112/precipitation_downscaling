@@ -22,6 +22,7 @@ from models.network_swinir import SwinIR as swinIR
 from models.network_vit import TransformerSR as vitSR
 from models.network_swinunet_sys import SwinTransformerSys as swinUnet
 from models.network_diffusion  import UNet_diff
+from models.network_unet2 import UNetModel
 from models.network_unet import Upsampling
 from utils.data_loader import create_loader
 from models.diffusion_utils import GaussianDiffusion
@@ -37,8 +38,7 @@ os.environ["WANDB_MODE"]="offline"
 ##os.environ["WANDB_API_KEY"] = key
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-torch.manual_seed(0)
-available_models = ["unet", "wgan", "diffusion", "swinIR","swinUnet"]
+available_models = ["unet", "wgan", "diffusion", "swinIR","swinUnet","diffusion2"]
 
 def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/train",
         val_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/val",
@@ -72,10 +72,13 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
               "patch_size": patch_size, "checkpoint": checkpoint
               }
 
+    if type_net not in available_models:
+        raise("type net should be one of the following models:",available_models)
+
     type_net = type_net.lower() 
     
     #some parameters for diffusion models
-    if type_net == "diffusion":
+    if type_net == "diffusion" or type_net == "diffusion2":
         diffusion = True
     else:
         diffusion = False

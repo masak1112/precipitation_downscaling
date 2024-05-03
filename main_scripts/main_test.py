@@ -47,7 +47,7 @@ def main():
 
 
     #some parameters for diffusion models
-    if args.model_type == "diffusion":
+    if args.model_type == "diffusion" or args.model_type == "diffusion2" :
         diffusion = True
     else:
         diffusion = False
@@ -82,15 +82,15 @@ def main():
     with open(stat_file,'r') as f:
         stat_data = json.load(f)
 
-    vars_in_patches_min = stat_data['yw_hourly_in_min']
-    vars_in_patches_max  = stat_data['yw_hourly_in_max']
+    vars_in_patches_min = stat_data['tp_min']
+    vars_in_patches_max  = stat_data['tp_max']
     vars_out_patches_min = stat_data['yw_hourly_tar_min']
     vars_out_patches_max  = stat_data['yw_hourly_tar_max']
 
 
     #Diffusion model
 
-    if args.model_type == "diffusion":
+    if args.model_type == "diffusion" or args.model_type == "diffusion2" :
             
         with torch.no_grad():
             model.netG.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])
@@ -136,7 +136,7 @@ def main():
                 with torch.no_grad():
                     model.netG_forward(i)
                 
-                gd = GaussianDiffusion(conditional=True, timesteps=80, model=model.netG)
+                gd = GaussianDiffusion(conditional=True, timesteps=200, model=model.netG)
                 #now, we only use the unconditional difussion model, meaning the inputs are only noise.
                 #This is the first test, later, we will figure out how to use conditioanl difussion model.
                 print("Start reverse process")
@@ -161,16 +161,11 @@ def main():
                 sample_first = samples[0].cpu().numpy()
 
                 # sample_50 = samples[50].cpu().numpy()
-
-
                 # sample_100 = samples[100].cpu().numpy()
-
-
                 # sample_150 = samples[150].cpu().numpy()
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 #preds = sample_last.cpu().numpy()
-    
     
                 #pred_temp = np.exp(pred_temp.cpu().numpy()+np.log(args.k))-args.k
                 ref = model.H.cpu().numpy() #this is the true noise

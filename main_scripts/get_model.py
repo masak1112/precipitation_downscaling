@@ -17,14 +17,15 @@ from models.network_swinunet_sys import SwinTransformerSys as swinUnet
 from models.network_diffusion  import UNet_diff
 from models.diffusion_utils import GaussianDiffusion
 from models.network_critic import Discriminator as critic
+from models.network_unet2 import UNetModel
 
 
 def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
     netC = None
     # Define the models
     if type_net == "unet":
-        netG = unet(n_channels = n_channels,dataset_type=dataset_type)
 
+        netG = unet(n_channels = n_channels,dataset_type=dataset_type)
     elif type_net == "swinir":
         netG = swinIR(img_size=img_size,
                       patch_size=4,
@@ -60,6 +61,26 @@ def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
         # add one channel for the noise
         netG = UNet_diff(img_size=img_size[0],
                          n_channels=n_channels+1)
+    elif type_net == "diffusion2":
+        netG = UNetModel(image_size = img_size[0],
+            in_channels=n_channels+1,
+            model_channels= n_channels,
+            out_channels=1,
+            num_res_blocks=3,
+            attention_resolutions=[40,10],
+            dropout=0,
+            channel_mult=(1, 2, 4, 8),
+            conv_resample=True,
+            dims=2,
+            num_classes=None,
+            use_checkpoint=False,
+            use_fp16=False,
+            num_heads=1,
+            num_head_channels=-1,
+            num_heads_upsample=-1,
+            use_scale_shift_norm=False,
+            resblock_updown=False,
+            use_new_attention_order=False)
 
     elif type_net == "wgan":
         netG = unet(n_channels=n_channels, 

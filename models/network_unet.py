@@ -10,7 +10,6 @@ from functools import reduce
 from operator import __add__
 
 
-
 class Conv2dSamePadding(nn.Conv2d):
     def __init__(self,*args,**kwargs):
         super(Conv2dSamePadding, self).__init__(*args, **kwargs)
