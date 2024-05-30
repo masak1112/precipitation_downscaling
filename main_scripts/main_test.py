@@ -172,11 +172,9 @@ def main():
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
                 #hr = model.hr.cpu().numpy()
-
                 hr = (model.hr.cpu().numpy()) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 hr = np.exp(hr+np.log(args.k))-args.k
                 
-            
                 input_list.append(input_temp) #ground truth images
                 lats_list.append(lats)
                 lons_list.append(lons)
