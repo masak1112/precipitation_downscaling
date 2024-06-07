@@ -112,7 +112,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         #get the topography dataset
         self.dt_top = xr.open_dataset("/p/project/deepacf/maelstrom/data/ap5/downscaling_ifs2radklim/srtm_data/topography_srtm_ifs2radklim.nc")
     
-
         if self.mode == "train" and not os.path.exists(stat_file):
             
             self.vars_in_patches_min = [] 
@@ -130,6 +129,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             self.vars_out_patches_avg = torch.mean(self.vars_out_patches_list)
             self.vars_out_patches_std = torch.std(self.vars_out_patches_list)
             self.save_stats()
+
         else:
             with open(stat_file,'r') as f:
                 stat_data = json.load(f)
@@ -196,14 +196,12 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         print("Loading data from the file:", filenames)
         dt = xr.open_mfdataset(filenames)
 
-        
         # get input variables, and select the regions
         inputs = dt[self.vars_in].isel(lon = slice(2, 114)).sel(lat = slice(47.5, 60))
         #inputs = dt[self.vars_in].sel(lon = slice(10, 12)).sel(lat = slice(50, 52))
         lats = inputs["lat"].values
         lons = inputs["lon"].values
         self.dx = lons[1] - lons[0]
-
         
         lon_sl , lat_sl = slice(lons[0]-self.dx/2, lons[-1]+self.dx/2), slice(lats[0]-self.dx, lats[-1]+self.dx)
         #output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl})

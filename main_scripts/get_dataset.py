@@ -17,10 +17,10 @@ def get_data_info(dataset_type, upscale=None, **kwargs):
         n_channels = 8
         upscale=4
         img_size=[patch_size, patch_size]
-    
+
     elif dataset_type == "precipitation_correction":
         n_channels = 1
-        patch_size = 160
+        patch_size = 16
         img_size =  [patch_size,patch_size]
 
     elif dataset_type == "temperature":

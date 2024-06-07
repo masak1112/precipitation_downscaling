@@ -34,7 +34,7 @@ def create_loader(file_path: str = None,
     if dataset_type == "precipitation":
         #vars_in = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in","u700_in","v700_in","yw_hourly_in"]
         vars_in = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in","yw_hourly_in"]
-        vars_out =  ["yw_hourly_tar"]
+        vars_out = ["yw_hourly_tar"]
         # dataset = PrecipDatasetInter(file_path,
         #                              batch_size,
         #                              patch_size,
@@ -48,8 +48,13 @@ def create_loader(file_path: str = None,
 
         dataset = PrecipCorrDatasetInter(file_path = file_path, 
                                         stat_path="/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train", 
-                                        )
+                                        vars_in = vars_in,vars_out=vars_out)
         dataloader = DataLoader(dataset, batch_size=None)
+
+    elif dataset_type == "precipitation_correction":
+        vars_in = ["fcst","top"]
+        vars_out = ["hr"]
+
     elif dataset_type == "temperature":
         dataset = CustomTemperatureDataset(file_path=file_path, verbose=verbose)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
