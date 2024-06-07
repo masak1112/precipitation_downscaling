@@ -157,7 +157,6 @@ def main():
                 preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 #log-transform -> log(x+k)-log(k)
                 preds =np.exp(preds+np.log(args.k))-args.k
-
                 sample_first = samples[0].cpu().numpy()
 
                 # sample_50 = samples[50].cpu().numpy()
@@ -224,7 +223,6 @@ def main():
             hr_list = hr_list[:, 0,: ,:]
 
 
-
         noiseP = np.concatenate(noise_pred_list,0)
 
         if len(noiseP.shape) == 4:
@@ -235,6 +233,7 @@ def main():
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
                     fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
                     fcast_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
+                    
                     #fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
                     #fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
                     #fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
@@ -344,8 +343,17 @@ def main():
     os.makedirs(args.save_dir,exist_ok=True)
 
     # ds.to_netcdf(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+'.nc'))
-    months, datasets = zip(*ds.groupby("time.month"))
-    save_paths = [os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_{y}.nc') for y in months]
+
+    years, datasets = zip(*ds.groupby("time.year"))
+
+    #years, datasets = zip(*datasets.groupby("time.year"))
+    print("years",years)
+    
+
+    save_paths = []
+    for y in years:
+        save_paths.append(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_year_{y}.nc'))
+
     print('save_paths: {}'.format(save_paths))
     xr.save_mfdataset(datasets, save_paths)
         

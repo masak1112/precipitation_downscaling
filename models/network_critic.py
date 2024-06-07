@@ -51,7 +51,8 @@ class Discriminator(torch.nn.Module):
     def forward(self, x):
         x = x.cuda()
         x = self.conv_block_n(x)
-        x = self.maxpool_conv(x)
+        #print("x in  critic",x.shape)
+        #x = self.maxpool_conv(x)
         x = self.flat(x)
         x = self.hidden(x)
         return self.output(x)

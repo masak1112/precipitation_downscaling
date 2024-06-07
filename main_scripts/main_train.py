@@ -115,8 +115,8 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         netC_params = sum(p.numel() for p in netC.parameters() if p.requires_grad)
         print("Total trainalbe parameters of the generator:", netG_params)
         print("Total trainalbe parameters of the critic:", netC_params)
-        flops, params = get_model_complexity_info(netC,  (1, 160, 160),as_strings=True)
-        print("flops for critic network, params for critic network", flops, params)
+        #flops, params = get_model_complexity_info(netC,  (1, 160, 160),as_strings=True)
+        #print("flops for critic network, params for critic network", flops, params)
     elif type_net!="diffusion":
         #calculate the model size
         #flops, params = get_model_complexity_info(netG,  (n_channels, img_size[0], img_size[1]),as_strings=True)

@@ -108,7 +108,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         #get the topography dataset
         self.dt_top = xr.open_dataset("/p/project/deepacf/maelstrom/data/ap5/downscaling_ifs2radklim/srtm_data/topography_srtm_ifs2radklim.nc")
-    
+        #print("self.dt_top",self.dt_top)
+        #self.dt_top = self.dt_top.coarsen(lat_tar=self.sf).mean().coarsen(lon_tar=self.sf).mean()
 
         if self.mode == "train":
             self.vars_in_patches_min = [] 
@@ -203,11 +204,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         cp = inputs["cp_in"].diff(dim="time") * 1000
         lsp = inputs["lsp_in"].diff(dim="time") *1000
 
-        print("cp",cp)
+        #print("cp",cp)
         #replace nan with zero values
         inputs = inputs.assign(tp=cp+lsp)
         #inputs["tp"] = (['time', 'lat', 'lon'], tp)
-        print("inputs",inputs)
+        #print("inputs",inputs)
     
         #inputs = dt[self.vars_in].sel(lon = slice(10, 12)).sel(lat = slice(50, 52))
         lats = inputs["lat"].values
@@ -217,7 +218,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         lon_sl , lat_sl = slice(lons[0]-self.dx/2, lons[-1]+self.dx/2), slice(lats[0]-self.dx, lats[-1]+self.dx)
         #output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl})
         output = dt[self.var_out].sel({"lon_tar": lon_sl, "lat_tar":lat_sl}).isel(lon_tar = slice(0, 1120)).isel(lat_tar = slice(0, 840))
-        
+        #print("output", output)
+        #Do interploation for bias corretion 
+        output = output.coarsen(lat_tar=self.sf).mean().coarsen(lon_tar=self.sf).mean()
+
+
         # Get lons and lats from the output dataset
         lats_tar = output["lat_tar"].values
         lons_tar = output["lon_tar"].values
@@ -225,8 +230,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         n_lat = output["lat_tar"].values.shape[0]
         n_lon = output["lon_tar"].values.shape[0]
 
-        self.n_patches_x = int(n_lon/(self.patch_size * self.sf))
-        self.n_patches_y = int(n_lat/(self.patch_size * self.sf))
+        self.n_patches_x = int(n_lon/(self.patch_size ))
+        self.n_patches_y = int(n_lat/(self.patch_size ))
         self.num_patches_img = self.n_patches_x * self.n_patches_y
         print("num_patches_images are", self.n_patches_x , self.n_patches_y)
 
@@ -275,10 +280,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         ## sanity check 
         assert len(times_patches) ==  vars_in_patches_shape[1] * vars_in_patches_shape[2] * vars_in_patches_shape[3]
 
-        vars_out_patches = da_out.unfold(1, self.patch_size * self.sf,
-                                         self.patch_size * self.sf).unfold(2,
-                                                                       self.patch_size * self.sf,
-                                                                       self.patch_size * self.sf)
+        vars_out_patches = da_out.unfold(1, self.patch_size ,
+                                         self.patch_size).unfold(2,self.patch_size,self.patch_size )
                                                          
         vars_out_patches_shape = list(vars_out_patches.shape)
         vars_out_patches = torch.reshape(vars_out_patches,
@@ -292,10 +295,10 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         #get lats and lons for each patch
         lats_in = torch.from_numpy(lats_tar)
         lons_in = torch.from_numpy(lons_tar)
-        self.lats_in_patches = lats_in.unfold(0, self.patch_size*self.sf, 
-                                              self.patch_size*self.sf)
-        self.lons_in_patches = lons_in.unfold(0, self.patch_size*self.sf, 
-                                              self.patch_size*self.sf)
+        self.lats_in_patches = lats_in.unfold(0, self.patch_size, 
+                                              self.patch_size)
+        self.lons_in_patches = lons_in.unfold(0, self.patch_size, 
+                                              self.patch_size)
     
         no_nan_idx = []
         
@@ -326,7 +329,6 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             #remove Nan values and no rain images, or nan values in the input data
             if (not torch.isnan(vars_out_patches[i]).any()) and torch.min(vars_in_patches[i][-1])>0 and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device):
                 no_nan_idx.append(i) 
-
 
         #Yan's method
         # log-transform -> log(x+k)-log(k)
@@ -419,9 +421,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         del inputs_nparray, outputs_nparray
         gc.collect()
         times = inputs["time"].values  # get the timestamps
-        times = np.transpose(np.stack([dt["time"].dt.year,dt["time"].dt.month,dt["time"].dt.day,dt["time"].dt.hour]))        
+        times = np.transpose(np.stack([dt["time"].dt.year,
+                                       dt["time"].dt.month,dt["time"].dt.day,
+                                       dt["time"].dt.hour]))        
 
-        print("Original input shape:", da_in.shape)
+        #print("Original input shape:", da_in.shape)
 
         no_nan_idx = []
 
@@ -481,12 +485,14 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
             # x  stores the low resolution images, y for high resolution,
             # t is the corresponding timestamps, cidx is the index
             x = torch.zeros(self.batch_size, len(self.vars_in), self.patch_size, self.patch_size)
-            y = torch.zeros(self.batch_size, self.patch_size * self.sf, self.patch_size * self.sf)
-            x_top = torch.zeros(self.batch_size, 1, self.patch_size * self.sf, self.patch_size * self.sf)
+            y = torch.zeros(self.batch_size, self.patch_size , self.patch_size)
+            x_top = torch.zeros(self.batch_size, 1, self.patch_size, self.patch_size)
+            
+
             t = torch.zeros(self.batch_size, 4, dtype = torch.int)
             cidx = torch.zeros(self.batch_size, 1, dtype = torch.int) #store the index
-            lons = torch.zeros(self.batch_size, self.patch_size*self.sf)
-            lats = torch.zeros(self.batch_size, self.patch_size*self.sf)
+            lons = torch.zeros(self.batch_size, self.patch_size)
+            lats = torch.zeros(self.batch_size, self.patch_size)
 
             for jj in range(self.batch_size):
                 
@@ -513,11 +519,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 lons[jj] = self.lons_in_patches[lons_cid]
                 #get topography
                 
-                tops = self.dt_top.sel(lon_tar=slice(lons[jj].cpu().numpy()[0]-self.dx/20,
-                                                     lons[jj].cpu().numpy()[-1]+self.dx/20)).sel(lat_tar=slice(lats[jj].cpu().numpy()[0]-self.dx/20,
-                                                                                                    lats[jj].cpu().numpy()[-1]+self.dx/20))["surface_elevation"].values
-                
-                
+                tops = self.dt_top.sel(lon_tar=slice(lons[jj].cpu().numpy()[0]-self.dx/2,
+                                                     lons[jj].cpu().numpy()[-1]+self.dx/2)).sel(lat_tar=slice(lats[jj].cpu().numpy()[0]-self.dx/2,
+                                                                                                    lats[jj].cpu().numpy()[-1]+self.dx/2))["surface_elevation"]
+        
+                tops = tops.coarsen(lat_tar=self.sf).mean().coarsen(lon_tar=self.sf).mean().values
           
                 tops = torch.from_numpy(np.expand_dims(np.transpose(tops,(1,0)),0))
 
@@ -525,6 +531,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 cidx[jj] = torch.tensor(cid, dtype=torch.int)
 
                 self.idx += 1
+
             yield  {'L': x, 'H': y, "idx": cidx, "T":t, "lons":lons, "lats":lats, "top":x_top}
 
 def run():
@@ -533,10 +540,12 @@ def run():
     for batch_idx, train_data in enumerate(data_loader):
         inputs = train_data["L"]
         target = train_data["H"]
+        print("target shape",target.shape)
         idx = train_data["idx"]
         times = train_data["T"]
         lats = train_data["lats"]
         top = train_data["top"]
+        
 
         print("top", top)
         # print("target max", torch.max(target))

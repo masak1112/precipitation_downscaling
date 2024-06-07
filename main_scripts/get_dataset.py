@@ -15,7 +15,7 @@ def get_data_info(dataset_type, **kwargs):
             patch_size = kwargs["patch_size"]
         print("The patch size for prepitation is", patch_size)
         n_channels = 8
-        upscale=4
+        upscale=1
         img_size=[patch_size, patch_size]
         
     elif dataset_type == "temperature":

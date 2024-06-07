@@ -196,7 +196,8 @@ class UNet(nn.Module):
     def __init__(self, n_channels, channels_start: int = 56, dataset_type: str = 'precipitation'):
         super(UNet, self).__init__()
         self.dataset_type = dataset_type
-        self.upsampling = Upsampling(n_channels, channels_start)
+        
+        #self.upsampling = Upsampling(n_channels, channels_start)
 
         """encoder """
         self.down1 = Encoder_Block(n_channels, channels_start)
@@ -209,6 +210,7 @@ class UNet(nn.Module):
         #Topography encoder 
         self.top = Conv_top(in_channels=2, out_channels=8, kernel_size=3, bias=True)
 
+
         """decoder """
         self.up1 = Decode_Block(channels_start * 8 + 32, channels_start * 4 + 32)
         self.up2 = Decode_Block(channels_start * 4 + 32, channels_start * 2 + 32)
@@ -219,8 +221,9 @@ class UNet(nn.Module):
     def forward(self, x: Tensor, topography: Tensor) -> Tensor:
         x = x.cuda()
         # print("input shape",x.shape)
-        if self.dataset_type == 'precipitation':
-            x = self.upsampling(x)
+        # if self.dataset_type == 'precipitation':
+        #     x = self.upsampling(x)
+
 
         s1, e1 = self.down1(x)
         s2, e2 = self.down2(e1)
