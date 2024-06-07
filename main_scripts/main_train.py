@@ -132,7 +132,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         hparams = {"critic_iterations": 5, "lr_gn": 1.e-05, 
                   "lr_gn_end":1.e-06, "lr_critic": 1.e-06,
                   "decay_start":25, "decay_end": 50,
-                  "lambada_gp":10, "recon_weight":1000}
+                  "lambada_gp":10, "recon_weight":2000}
         
         config.update(hparams)
 
