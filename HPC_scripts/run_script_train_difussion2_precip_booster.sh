@@ -20,10 +20,10 @@ module load netcdf4-python/1.5.7
 source ../sc_venv_template/venv/bin/activate
 
 
-save_dir=../results/exp_20230828_diffusion_harris_threshold2_biascorrection
+save_dir=../results/exp_20240430_biascorrection
 train_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/train
 val_dir=/p/scratch/deepacf/maelstrom/maelstrom_data/ap5/downscaling_precipitation/precip_dataset/val
 epochs=20
-model_type=diffusion
+model_type=diffusion2
 
 srun --overlap python ../main_scripts/main_train.py --train_dir ${train_dir} --val_dir ${val_dir} --save_dir ${save_dir} --epochs ${epochs} --model_type ${model_type} 
