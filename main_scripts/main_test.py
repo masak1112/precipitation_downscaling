@@ -87,7 +87,6 @@ def main():
     vars_out_patches_min = stat_data['yw_hourly_tar_min']
     vars_out_patches_max  = stat_data['yw_hourly_tar_max']
 
-
     #Diffusion model
 
     if args.model_type == "diffusion" or args.model_type == "diffusion2" :
@@ -105,9 +104,6 @@ def main():
             lats_list = []       #lats
             lons_list = []       #lons
             pred_first_list = []
-            # pred_100_list = []
-            # pred_50_list = []
-            # pred_150_list = []
             pred_last_list = []
             for i, test_data in enumerate(test_loader):
                 idx += 1
@@ -258,7 +254,8 @@ def main():
                 pred_list = []   # prediction high-resolution results
                 cidx_list = []   # image index
                 times_list = []  #timestamps
-                hr_list = []  # ground truth images
+                hr_list = []  # ground truth images #low rewolution
+                hr_orig_list = [] #ground truth high resolution
                 lats_list = [] #lats
                 lons_list = [] #lons
                 tops_list = [] 
@@ -276,18 +273,20 @@ def main():
                     #Get the low resolution inputs
                     input_vars = test_data["L"]
                     input_temp = input_vars.cpu().numpy()
-                    input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max- vars_in_patches_min )+ vars_in_patches_min 
+                    input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max - vars_in_patches_min )+ vars_in_patches_min 
                     input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
                     model.netG_forward(i)
                     #Get the prediction values
-                    preds = model.E.cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    preds = model.E.cpu().numpy() * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min
                     preds = np.exp(preds+np.log(args.k))-args.k
 
                     #Get the groud truth values
                     hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     hr = np.exp(hr+np.log(args.k))-args.k
-                    
+
+                    hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    hr_orig = np.exp(hr_orig+np.log(args.k))-args.k
                     #get the raw topograph data
                     top = top *(3846+182) -182
 
@@ -299,6 +298,7 @@ def main():
                     tops_list.append(top.cpu().numpy())
                     input_list.append(input_temp) #ground truth images
                     hr_list.append(hr) #grount truth
+                    hr_orig_list.append(hr_orig)
                     pred_list.append(preds)  #predicted high-resolution images
                 
                 cidx = np.squeeze(np.concatenate(cidx_list,0))
@@ -308,6 +308,7 @@ def main():
                 lats_hr = np.concatenate(lats_list, 0)
                 lons_hr = np.concatenate(lons_list, 0)
                 hr_list = np.concatenate(hr_list,0)
+                hr_orig_list = np.concatenate(hr_orig_list,0)
                 top_list = np.concatenate(tops_list,0)
   
                 datetimes = []
@@ -321,15 +322,17 @@ def main():
                 intL = intL[:, 0,: ,:]
             if len(hr_list.shape) == 4:
                 hr_list = hr_list[:, 0,: ,:]
+            if len(hr_orig_list.shape) == 4:
+                hr_orig_list = hr_orig_list[:, 0,: ,:]
             if len(top_list.shape) == 4:
                 top_list = top_list[:, 0,: ,:]
-
 
             ds = xr.Dataset(
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
-                    fcst = (["time", "lat", "lon"], np.squeeze(pred)),
-                    hr = (["time", "lat", "lon"], hr_list),
+                    fcst = (["time", "lat_in", "lon_in"], np.squeeze(pred)),
+                    hr = (["time", "lat_in", "lon_in"], hr_list),
+                    hr_orig = (["time", "lat", "lon"], hr_orig_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                     tops = (["time","lat","lon"], top_list)),

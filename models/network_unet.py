@@ -223,7 +223,7 @@ class UNet(nn.Module):
         # print("input shape",x.shape)
         # if self.dataset_type == 'precipitation':
         #     x = self.upsampling(x)
-
+        topography = nn.functional.interpolate(topography, scale_factor=0.1)
 
         s1, e1 = self.down1(x)
         s2, e2 = self.down2(e1)
@@ -231,6 +231,7 @@ class UNet(nn.Module):
         x4 = self.b1(e3)
         top = self.top(topography)
         #add the topograph to the neural network
+
         x5 = torch.cat((x4, top), 1) #16，480， 20，20
 
         d1 = self.up1(x5, s3)
