@@ -77,7 +77,7 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
         self.in_data,self.out_data,self.top,self.lats,self.lons,self.time = self.get_input_target(files)
         if self.mode == "train":
             self.idx_perm = self.shuffle()
-            self.save_stats()
+            #self.save_stats()
         else:
             self.idx_perm = np.arange(0, self.n_samples)
         print(f"all samples is {self.n_samples}")
@@ -135,11 +135,11 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
 
     def __iter__(self):
          #min-max score
-        def normalize(x, x_min,x_max):
-            return ((x - x_min)/(x_max-x_min))
+        # def normalize(x, x_min,x_max):
+        #     return ((x - x_min)/(x_max-x_min))
 
-        def normalize(x, avg,std):
-            return (x-avg)/std
+        # def normalize(x, avg,std):
+        #     return (x-avg)/std
         iter_start, iter_end = 0, int(len(self.idx_perm)/self.batch_size)
         for bidx in range(iter_start, iter_end):
             idx_list = self.idx_perm[range(bidx * self.batch_size, (bidx + 1) * self.batch_size )]
