@@ -152,7 +152,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
         #default parameters for other models (except WGAN)
         hparams = {"G_lossfn_type": "weight_MAE",
                    "G_optimizer_type": "adam",
-                   "G_optimizer_lr": 5.e-06,
+                   "G_optimizer_lr": 3.e-07,
                   "G_optimizer_betas":[0.9, 0.999],
                    "G_optimizer_wd": 5.e-04,
                    "diffusion": diffusion}
@@ -221,3 +221,8 @@ if __name__ == '__main__':
     main()
 
 # change loss function and  add abaseline loss (input/target)  and more epochs
+'''
+python precipitation_downscaling-bing_issue09_bias_correction/main_scripts/main_train.py --train_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/train --val_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/val --save_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/issue#001 --model_type unet --epochs 60 --k 0.005
+
+
+'''
