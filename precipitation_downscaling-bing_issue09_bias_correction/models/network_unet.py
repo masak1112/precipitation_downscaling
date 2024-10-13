@@ -24,12 +24,12 @@ class Upsampling(nn.Module):
 
     def __init__(self, in_channels:int = None, out_channels: int = None,
                  kernel_size: int = 4, padding: int = 1, stride: int = 2,
-                 upsampling: bool = True, sf: int = 10, mode: str = "bilinear"):
+                 upsampling: bool = True, sf: int = 10, mode: str = "bicubic"):
         super().__init__()
         """
         This block is used for transposed low-resolution to the same dim as high-resolution before performing UNet
         Note: The input data is assumed to be of the form minibatch x channels x [optional depth] x [optional height] x width.
-        :param in_channels : the number of input variables
+        :param in_channels : the number of input variables  
         :param out_channels: the output channels for each ConvTranspose2D layer
         :param kernel_size : the kernel size
         :param padding     : the padding size

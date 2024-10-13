@@ -33,6 +33,9 @@ import xarray as xr
 --stat_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/train
 --checkpoint /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/zx_results/train1/41075_G.pth
 '''
+'''
+python /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/precipitation_downscaling-bing_issue09_bias_correction/main_scripts/main_testsr.py --test_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/test --save_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/ex4 --stat_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/train --checkpoint /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/ex4/29430_G.pth --k 0.008
+'''
 
 def main():
  
