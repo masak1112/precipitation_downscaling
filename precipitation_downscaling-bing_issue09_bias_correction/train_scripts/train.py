@@ -33,8 +33,8 @@ class Weight_Loss(nn.Module):
         super(Weight_Loss, self).__init__()
     def init_w(self,y_true):
         weights = torch.tensor(y_true,requires_grad=False) # 
-        MIN = torch.tensor(np.log(1 + 0.1),dtype = weights.dtype,requires_grad=False)
-        MAX = torch.tensor(np.log(1 + 80),dtype = weights.dtype,requires_grad=False)
+        MIN = torch.tensor(np.log(1 + 3),dtype = weights.dtype,requires_grad=False)
+        MAX = torch.tensor(np.log(1 + 70),dtype = weights.dtype,requires_grad=False)
         weights[y_true < MIN] = MIN 
         weights[y_true >= MAX] = MAX
         return weights.to('cuda') 
