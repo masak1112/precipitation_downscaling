@@ -575,21 +575,20 @@ def run():
         vars_out = ["yw_hourly_tar"],
         mode= 'train',
         stat_path = "/cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/train_small",
-        k = 0.01
+        k = 0.005
         )
     k = torch.tensor(0.01)
     print("created data_loader")
     for batch_idx, train_data in enumerate(data_loader):
         inputs = train_data["L"]
+        _max1 = torch.max(inputs) #  6.8247
+        _min1 = torch.min(inputs)
+        print('最大最小',_max1,_min1)
         print("inputs shape:", inputs.shape) # （ 32,5,16,16）
         target = train_data["H"]
-        _max = torch.max(target) #  6.8247
-        _min = torch.min(target)
-        print('最大最小',_max,_min)
-        target = torch.exp(target) * k - k
-        _max1 = torch.max(target) # 4.5967
-        _min1 = torch.min(target)
-        print('最大最小',_max,_min)
+        _max2 = torch.max(target) #  6.8247
+        _min2 = torch.min(target)
+        print('最大最小',_max2,_min2)
         break
         # print("target shape:",target.shape)  # （32,16,16）
         # idx = train_data["idx"]

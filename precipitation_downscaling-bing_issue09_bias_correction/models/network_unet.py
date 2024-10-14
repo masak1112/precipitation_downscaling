@@ -215,7 +215,7 @@ class UNet(nn.Module):
         self.up3 = Decode_Block(channels_start * 2 + 32, channels_start + 32)
         self.output = nn.Conv2d(channels_start + 32, 1, kernel_size=1, bias=True)
         # torch.nn.init.xavier_uniform(self.output.weight)
-        final_dim = 160 * 160
+        final_dim = 16 * 16
         self.fc = nn.Sequential(nn.Linear(final_dim, final_dim * 2),
                                 nn.ReLU(inplace=True),
                                 nn.Linear(final_dim * 2, final_dim))
@@ -224,10 +224,10 @@ class UNet(nn.Module):
     def forward(self, x: Tensor, topography: Tensor) -> Tensor:
         # x = x.cuda()
         # print("input shape",x.shape)
-        if self.dataset_type == 'precipitation':
-            x = self.upsampling(x)
+        # if self.dataset_type == 'precipitation':
+        #     x = self.upsampling(x)
         # remove top  
-        topography = nn.functional.interpolate(topography, scale_factor=1)
+        topography = nn.functional.interpolate(topography, scale_factor=10)
 
         s1, e1 = self.down1(x)
         s2, e2 = self.down2(e1)
@@ -248,7 +248,7 @@ class UNet(nn.Module):
         # output = torch.sigmoid(output)
         #  add relu change k(0.001 ,0.5) function  (z-score) 
         # y = k * x + b   
-        output = output.view(output.size(0), 1, 160, 160)      
+        output = output.view(output.size(0), 1, 16, 16)      
         return output
 
 

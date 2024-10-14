@@ -33,7 +33,7 @@ class Weight_Loss(nn.Module):
         super(Weight_Loss, self).__init__()
     def init_w(self,y_true):
         weights = torch.tensor(y_true,requires_grad=False) # 
-        MIN = torch.tensor(np.log(1 + 0.1),dtype = weights.dtype,requires_grad=False)
+        MIN = torch.tensor(np.log(1 + 1.7),dtype = weights.dtype,requires_grad=False)
         MAX = torch.tensor(np.log(1 + 80),dtype = weights.dtype,requires_grad=False)
         weights[y_true < MIN] = MIN 
         weights[y_true >= MAX] = MAX
@@ -187,8 +187,8 @@ class BuildModel:
         self.L = data['L'].cuda()
         self.top = data["top"].cuda()
         #print("self.top in feed data",self.top.shape)
-        upsampling = Upsampling(in_channels = 1) # 8
-        self.L_inter = upsampling(self.L)
+        # upsampling = Upsampling(in_channels = 1) # 8
+        # self.L_inter = upsampling(self.L)
         if self.diffusion:
             upsampling = Upsampling(in_channels = 8) # 8
             self.L = upsampling(self.L)
@@ -257,7 +257,7 @@ class BuildModel:
         if not len(self.E.shape) == len(self.H.shape):
             raise ("The shape of generated data and ground truth are not the same as above")
         self.G_loss = self.G_lossfn(self.E, self.H)  # pred / target
-        self.G_loss_base = self.G_lossfn(self.L_inter,self.H)  # input[:-1:] / target
+        self.G_loss_base = self.G_lossfn(self.L[:,-1,:,:].unsqueeze(1),self.H)  # input[:-1:] / target
         #print('input / target',self.L[:,-1,:,:].unsqueeze(1).shape, self.H.shape)(-1,h,16,16) (-1,1,16,16)
         if current_step % self.log_interval == 0 or current_step == 1:
             self.loss_history.append((current_step, self.G_loss.item()))
@@ -307,7 +307,7 @@ class BuildModel:
         steps = range(len(losses))
         plt.figure(figsize=(10, 5))
         plt.plot(steps, losses, label='Training Loss', color='blue')  # Plotting training loss
-        plt.plot(steps, losses_base, label='Baseline Loss(interpolation)', color='orange')  # Plotting baseline loss
+        plt.plot(steps, losses_base, label='Baseline Loss', color='orange')  # Plotting baseline loss
         plt.title(f'Training Loss Over Steps (window_size = {window_size})')
         plt.xlabel('Steps')
         plt.ylabel('Loss')
