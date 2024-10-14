@@ -74,7 +74,7 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
         if len(files) < 1:
             raise RuntimeError('No files found.')
         print("Going to open the following files:", files)
-        self.in_data,self.out_data,self.top,self.lats,self.lons,self.time = self.get_input_target(files)
+        self.in_data,self.out_data,self.orig_inputs,self.top,self.lats,self.lons,self.time = self.get_input_target(files)
         if self.mode == "train":
             self.idx_perm = self.shuffle()
             #self.save_stats()
@@ -116,6 +116,7 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
         top  = dt['tops'].values
         lats = dt['lats'].values
         lons = dt['lons'].values
+        inputs = dt['inputs'].values
         #time = torch.from_numpy(dt['time'].values.astype('datetime64[s]').astype('int'))
         time = pd.to_datetime(dt['time'].values)
         time = np.stack(
@@ -130,7 +131,8 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
         # y = log(x + k) - log(k) xr.ufuncs.log(da)
         fcst  = np.log(fcst + self.k) - np.log(self.k)
         hr_orig  = np.log(hr_orig+ self.k) - np.log(self.k)
-        return fcst,hr_orig,top,lats,lons,time
+        inputs  = np.log(inputs+ self.k) - np.log(self.k)
+        return fcst,hr_orig,inputs,top,lats,lons,time
 
 
     def __iter__(self):
@@ -145,6 +147,7 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
             idx_list = self.idx_perm[range(bidx * self.batch_size, (bidx + 1) * self.batch_size )]
             x = torch.from_numpy(self.in_data[idx_list].astype(np.float32))
             y = torch.from_numpy(self.out_data[idx_list].astype(np.float32))
+            x_orig = torch.from_numpy(self.orig_inputs[idx_list].astype(np.float32))
             lons = torch.from_numpy(self.lons[idx_list].astype(np.float32))
             lats = torch.from_numpy(self.lats[idx_list].astype(np.float32))
             x_top = torch.from_numpy(self.top[idx_list].astype(np.float32))
@@ -156,7 +159,7 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
             # y = normalize(y,self.stats['out_min'],self.stats['out_max'])
             # x = normalize(x,self.stats['in_min'],self.stats['in_max'])
             # y = normalize(y,self.stats['out_min'],self.stats['out_max'])
-            yield  {'L': x, 'H': y, "idx": idx_list, "T":t, "lons":lons, "lats":lats, "top":x_top,}
+            yield  {'L': x, 'H': y, 'L_orig':x_orig,"idx": idx_list, "T":t, "lons":lons, "lats":lats, "top":x_top,}
 
     def shuffle(self):
         """

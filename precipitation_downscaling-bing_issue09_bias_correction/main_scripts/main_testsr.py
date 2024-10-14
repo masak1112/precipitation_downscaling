@@ -275,6 +275,7 @@ def main():
                 lats_list = [] #lats
                 lons_list = [] #lons
                 tops_list = [] 
+                orig_in = []
                 for i, test_data in enumerate(test_loader):
                     idx += 1
                     batch_size = test_data["L"].shape[0]
@@ -314,10 +315,10 @@ def main():
 
                     inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     inter = np.exp(inter+np.log(args.k))-args.k
-                    # hr_orig =  test_data["H_orig"].cpu().numpy()
+                    inputs_orig =  test_data["L_orig"].cpu().numpy()
                     #hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     #hr_orig =  test_data["H"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
-                    #hr_orig = np.exp(hr_orig+np.log(args.k ))-args.k 
+                    inputs_orig = np.exp(inputs_orig+np.log(args.k ))-args.k 
                     # get the raw topograph data
                     # normalize(tops, avg = 312.71216, std = 442.65375)
                     top = top * 442.65375 + 312.71216
@@ -332,6 +333,7 @@ def main():
                     hr_list.append(hr) #grount truth
                     inter_list.append(inter)
                     pred_list.append(preds)  #predicted high-resolution images
+                    orig_in.append(inputs_orig)
                 
                 cidx = np.squeeze(np.concatenate(cidx_list,0))
                 times = np.concatenate(times_list,0)
@@ -342,6 +344,7 @@ def main():
                 hr_list = np.concatenate(hr_list,0)
                 inter_list = np.concatenate(inter_list,0)
                 top_list = np.concatenate(tops_list,0)
+                orig_in = np.concatenate(orig_in,0)
   
                 datetimes = []
                 for i in range(times.shape[0]):
@@ -362,6 +365,7 @@ def main():
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
                     inter = (["time", "lat", "lon"], np.squeeze(inter_list)),
+                    orig_inputs = (["time", "lat_in", "lon_in"], orig_in),
                     hr = (["time", "lat", "lon"], hr_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
