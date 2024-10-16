@@ -389,3 +389,7 @@ if __name__ == '__main__':
     if cuda:
         torch.set_default_tensor_type('torch.cuda.FloatTensor') 
     main()
+'''
+python /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/precipitation_downscaling-bing_issue09_bias_correction/main_scripts/main_test.py --test_dir=/cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/test --save_dir=/cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/test_output_nonorm0.2K_lr6grama2 --dataset_type=precipitation --model_type=unet --stat_dir=/cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/train  --k 
+
+'''

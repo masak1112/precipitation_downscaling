@@ -222,12 +222,12 @@ class UNet(nn.Module):
         # torch.nn.init.xavier_uniform(self.fc.weight)
 
     def forward(self, x: Tensor, topography: Tensor) -> Tensor:
-        # x = x.cuda()
+        #x = x.cuda()
         # print("input shape",x.shape)
         # if self.dataset_type == 'precipitation':
         #     x = self.upsampling(x)
         # remove top  
-        topography = nn.functional.interpolate(topography, scale_factor=10)
+        topography = nn.functional.interpolate(topography, scale_factor=0.1)
 
         s1, e1 = self.down1(x)
         s2, e2 = self.down2(e1)

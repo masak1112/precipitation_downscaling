@@ -589,6 +589,8 @@ def run():
         _max2 = torch.max(target) #  6.8247
         _min2 = torch.min(target)
         print('最大最小',_max2,_min2)
+        lons = train_data["lons"]
+        print('')
         break
         # print("target shape:",target.shape)  # （32,16,16）
         # idx = train_data["idx"]
