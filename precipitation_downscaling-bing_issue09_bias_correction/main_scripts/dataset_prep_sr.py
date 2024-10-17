@@ -81,8 +81,8 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
         else:
             self.idx_perm = np.arange(0, self.n_samples)
         print(f"all samples is {self.n_samples}")
-        with open(os.path.join(self.stat_path, "statistics.json"), 'r') as file:
-            self.stats = json.load(file)
+        # with open(os.path.join(self.stat_path, "statistics.json"), 'r') as file:
+        #     self.stats = json.load(file)
 
     def save_stats(self):
         output_file = os.path.join(self.stat_path, "statistics.json")
@@ -105,9 +105,10 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
         fcst = dt['fcst'].values
         # del nan value
         no_nan_idx = []
+        print(f"fcst shape is {fcst.shape},hr_orig shape is { hr_orig.shape}")
         for i in range(hr_orig.shape[0]):
             #remove Nan values and no rain images, or nan values in the input data
-            if (not np.isnan(hr_orig[i]).any()) and np.max(hr_orig[i])>=0.1 and np.min(fcst[i])>=0:
+            if (not np.isnan(hr_orig[i]).any()) and np.max(hr_orig[i])>=0.1:
                 no_nan_idx.append(i) 
         print(f'nan len {len(no_nan_idx)}')
         dt = dt.isel(time = no_nan_idx)
@@ -175,7 +176,7 @@ class PrecipDatasetSR(torch.utils.data.IterableDataset):
 
 def run():
     data_loader = PrecipDatasetSR(
-        file_path="/cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/train/",
+        file_path="/cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/deviation_correction/dataset/train/",
         vars_in = ["tp"],
         vars_out = ["yw_hourly_tar"],
         mode= 'train',
@@ -194,9 +195,10 @@ def run():
         m4 = target.max()
         print("target shape:", target.shape) # （ 32,5,16,16）
         x += inputs.shape[0]
+        
     print(x)
       
-
+# (23552, 16, 16)
 if __name__ == "__main__":
     run()
 

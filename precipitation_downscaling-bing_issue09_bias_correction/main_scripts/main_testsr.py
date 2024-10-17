@@ -84,7 +84,7 @@ def main():
                                 stat_path=args.stat_dir,
                                 batch_size=8,
                                 k = args.k)
-    
+    '''
     #Get and load the statistics information from the training directory for denormalisation
     stat_file = os.path.join(args.stat_dir, "statistics.json")
     print("The statsitics json files is opened from", stat_file)
@@ -100,7 +100,7 @@ def main():
     vars_out_patches_max  = stat_data['out_max']
     vars_out_patches_avg = stat_data['out_avg']
     vars_out_patches_std  = stat_data['out_std']
-
+    '''
     #Diffusion model
 
     if args.model_type == "diffusion" or args.model_type == "diffusion2" :
