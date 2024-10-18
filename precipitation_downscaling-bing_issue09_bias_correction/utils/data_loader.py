@@ -31,7 +31,7 @@ def create_loader(file_path: str = None,
     dataset_type    : specify which dataset type we want to load
     """
     if dataset_type == "precipitation":
-        '''
+        
         vars_in = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in","u700_in","v700_in","tp"]
         #vars_in = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in","u700_in","v700_in","tp"]
         #vars_in = ["tclw_in","tcwv_in","lsp_in", "cp_in", "tp"] # "tclw_in","tcwv_in",
@@ -58,6 +58,7 @@ def create_loader(file_path: str = None,
                     batch_size = batch_size,
                     stat_path = stat_path,
                     )
+        '''
         dataloader = DataLoader(dataset, batch_size=None)
         
     elif dataset_type == "temperature":
