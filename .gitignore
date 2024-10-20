@@ -2,5 +2,7 @@
 /py3.10
 /SER
 /zx_results
+/yzy_results
 /downscaling_precipitation
 /deviation_correction
+/precipitation_downscaling-bing_issue09_bias_correction/data_corrected.ipynb
