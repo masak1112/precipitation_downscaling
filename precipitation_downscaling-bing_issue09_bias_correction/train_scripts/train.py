@@ -33,8 +33,8 @@ class Weight_Loss(nn.Module):
         super(Weight_Loss, self).__init__()
     def init_w(self,y_true):
         weights = torch.tensor(y_true,requires_grad=False) # 
-        MIN = torch.tensor(np.log(1 + 1.7),dtype = weights.dtype,requires_grad=False)
-        MAX = torch.tensor(np.log(1 + 75),dtype = weights.dtype,requires_grad=False)
+        MIN = torch.tensor(np.log(1 + 12.5),dtype = weights.dtype,requires_grad=False)
+        MAX = torch.tensor(np.log(1 + 12500),dtype = weights.dtype,requires_grad=False)
         weights[y_true < MIN] = MIN 
         weights[y_true >= MAX] = MAX
         return weights.to('cuda') 
@@ -185,10 +185,12 @@ class BuildModel:
     def feed_data(self, data):
 
         self.L = data['L'].cuda()
+        self.L_orig = data['L_orig']
         self.top = data["top"].cuda()
         #print("self.top in feed data",self.top.shape)
         upsampling = Upsampling(in_channels = 1) # 8
         self.L_inter = upsampling(self.L)
+        self.L_orig_inter = upsampling(self.L_orig)
         if self.diffusion:
             upsampling = Upsampling(in_channels = 8) # 8
             self.L = upsampling(self.L)
@@ -320,6 +322,9 @@ class BuildModel:
     def fit(self):
         self.init_train()
         current_step = self.iteration 
+        min_val_loss = float('inf')
+        patience = 7
+        trigger_times = 0
         for epoch in range(self.epochs):
             for i, train_data in enumerate(self.train_loader):
                 st = time.time()
@@ -353,8 +358,38 @@ class BuildModel:
                     print("Time per step:", time.time() - st)
                 wandb.log({"loss": self.G_loss, "lr": lr})
             
+            # Validation at the end of each epoch
+            val_loss = self.validate()
+            print("Epoch: {}, Training Loss: {}, Validation Loss: {}".format(epoch, self.G_loss.item(), val_loss))
+
+            # Early stopping
+            if val_loss < min_val_loss:
+                min_val_loss = val_loss
+                trigger_times = 0
+            else:
+                trigger_times += 1
+                print("Early Stopping Counter: {}/{}".format(trigger_times, patience))
+                if trigger_times >= patience:
+                    print("Early stopping!")
+                    break
+
         self.save_loss_plot()
         self.save(current_step)
+
+
+    def validate(self):
+        self.netG.eval()
+        val_loss = 0.0
+        count = 0
+        with torch.no_grad():
+            for j, val_data in enumerate(self.val_loader):
+                self.feed_data(val_data)
+                self.netG_forward(j)
+                val_loss += self.G_lossfn(self.E, self.H).item()
+                count += 1
+        self.netG.train()
+        return val_loss / count
+
 
             # with torch.no_grad():
             #     val_loss = 0

@@ -270,12 +270,14 @@ def main():
                 pred_list = []   # prediction high-resolution results
                 cidx_list = []   # image index
                 times_list = []  #timestamps
-                hr_list = []  # ground truth images #low resolution
-                inter_list = [] #ground truth high resolution
+                hr_list = []    # ground truth images #low resolution
+                hr_coarse_list = []
+                input_inter_list = [] #ground truth high resolution
                 lats_list = [] #lats
                 lons_list = [] #lons
                 tops_list = [] 
-                orig_in = []
+                inputs_orig_list = []
+                inputs_orig_inter_list = []
                 for i, test_data in enumerate(test_loader):
                     idx += 1
                     batch_size = test_data["L"].shape[0]
@@ -305,6 +307,8 @@ def main():
                     preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     preds = np.exp(preds+np.log(args.k))-args.k
 
+                    hr_coarse = test_data["H_coarse"].cpu().numpy()
+                    hr_coarse = np.exp(hr_coarse+np.log(args.k))-args.k
                     #Get the groud truth values
                     # hr = test_data["H"].cpu().numpy()
                     # H : target
@@ -313,12 +317,16 @@ def main():
                     hr = np.exp(hr+np.log(args.k ))-args.k 
 
 
-                    inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
-                    inter = np.exp(inter+np.log(args.k))-args.k
+                    input_inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
+                    input_inter = np.exp(input_inter+np.log(args.k))-args.k
+
                     inputs_orig =  test_data["L_orig"].cpu().numpy()
                     #hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     #hr_orig =  test_data["H"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
                     inputs_orig = np.exp(inputs_orig+np.log(args.k ))-args.k 
+                    
+                    inputs_orig_inter = model.L_orig_inter.cpu().numpy()
+                    inputs_orig_inter = np.exp(inputs_orig_inter+np.log(args.k))-args.k 
                     # get the raw topograph data
                     # normalize(tops, avg = 312.71216, std = 442.65375)
                     top = top * 442.65375 + 312.71216
@@ -329,11 +337,15 @@ def main():
                     cidx_list.append(cidx_temp.cpu().numpy())
                     times_list.append(times_temp.cpu().numpy())
                     tops_list.append(top.cpu().numpy())
-                    input_list.append(input_temp) #ground truth images
+                    input_list.append(input_temp) 
                     hr_list.append(hr) #grount truth
-                    inter_list.append(inter)
+                    hr_coarse_list.append(hr_coarse)
+                    input_inter_list.append(input_inter)
                     pred_list.append(preds)  #predicted high-resolution images
-                    orig_in.append(inputs_orig)
+                    inputs_orig_list.append(inputs_orig)
+                    inputs_orig_inter_list.append(inputs_orig_inter)
+                    
+                    
                 
                 cidx = np.squeeze(np.concatenate(cidx_list,0))
                 times = np.concatenate(times_list,0)
@@ -342,9 +354,11 @@ def main():
                 lats_hr = np.concatenate(lats_list, 0)
                 lons_hr = np.concatenate(lons_list, 0)
                 hr_list = np.concatenate(hr_list,0)
-                inter_list = np.concatenate(inter_list,0)
+                hr_coarse_list = np.concatenate(hr_coarse_list,0)
+                input_inter_list = np.concatenate(input_inter_list,0)
                 top_list = np.concatenate(tops_list,0)
-                orig_in = np.concatenate(orig_in,0)
+                inputs_orig_list = np.concatenate(inputs_orig_list,0)
+                inputs_orig_inter_list = np.concatenate(inputs_orig_inter_list,0)
   
                 datetimes = []
                 for i in range(times.shape[0]):
@@ -362,11 +376,13 @@ def main():
 
             ds = xr.Dataset(
                 data_vars = dict(
-                    inputs = (["time", "lat_in", "lon_in"], intL),
+                    inputs = (["time", "lat_in", "lon_in"], np.squeeze(intL)),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
-                    inter = (["time", "lat", "lon"], np.squeeze(inter_list)),
-                    orig_inputs = (["time", "lat_in", "lon_in"], orig_in),
+                    inputs_inter = (["time", "lat", "lon"], np.squeeze(input_inter_list)),
+                    inputs_orig = (["time", "lat_in", "lon_in"], np.squeeze(inputs_orig_list)),
+                    inputs_orig_inter = (["time", "lat", "lon"], np.squeeze(inputs_orig_inter_list)),
                     hr = (["time", "lat", "lon"], hr_list),
+                    hr_coarse = (["time", "lat_in", "lon_in"], hr_coarse_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                     tops = (["time","lat","lon"], top_list)),
