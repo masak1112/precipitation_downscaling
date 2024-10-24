@@ -346,11 +346,18 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         #         # else:
         #         #     pass
                 
-    
+        threshold = 0.01 
+        ratio_threshold = 0.80  
         for i in range(vars_out_patches.shape[0]):
             #remove Nan values and no rain images, or nan values in the input data
             if (not torch.isnan(vars_out_orig_patches[i]).any()) and torch.min(vars_in_patches[i][-1])>0 and torch.max(vars_out_orig_patches[i])>=torch.tensor(0.1).to(device):
-                no_nan_idx.append(i) 
+                if self.mode == "train":
+                    low_value_ratio = (vars_out_orig_patches[i] < threshold).float().mean()
+                    if low_value_ratio < ratio_threshold:
+                        no_nan_idx.append(i)
+                else:
+                    no_nan_idx.append(i)
+                # no_nan_idx.append(i) 
 
         #Yan's method
         # log-transform -> log(x+k)-log(k)
