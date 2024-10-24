@@ -348,7 +348,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
     
         for i in range(vars_out_patches.shape[0]):
             #remove Nan values and no rain images, or nan values in the input data
-            if (not torch.isnan(vars_out_patches[i]).any()) and torch.min(vars_in_patches[i][-1])>0 and torch.max(vars_out_patches[i])>=torch.tensor(0.1).to(device):
+            if (not torch.isnan(vars_out_orig_patches[i]).any()) and torch.min(vars_in_patches[i][-1])>0 and torch.max(vars_out_orig_patches[i])>=torch.tensor(0.1).to(device):
                 no_nan_idx.append(i) 
 
         #Yan's method
@@ -566,7 +566,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
                 self.idx += 1
 
-            yield  {'L': x, 'H': y, "idx": cidx, "T":t, "lons":lons, "lats":lats, "top":x_top, "H_orig":y_orig}
+            # yield  {'L': x, 'H': y, "idx": cidx, "T":t, "lons":lons, "lats":lats, "top":x_top, "H_orig":y_orig}
+            yield  {'L': x, 'H': y_orig, "idx": cidx, "T":t, "lons":lons, "lats":lats, "top":x_top, "H_orig":y_orig}
 
 def run():
     data_loader = PrecipDatasetInter(
@@ -586,10 +587,10 @@ def run():
         _max = torch.max(target) #  6.8247
         _min = torch.min(target)
         print('最大最小',_max,_min)
-        target = torch.exp(target) * k - k
         _max1 = torch.max(target) # 4.5967
         _min1 = torch.min(target)
         print('最大最小',_max,_min)
+        print("target shape:", target.shape)
         break
         # print("target shape:",target.shape)  # （32,16,16）
         # idx = train_data["idx"]

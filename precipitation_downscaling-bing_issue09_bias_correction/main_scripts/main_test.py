@@ -271,6 +271,7 @@ def main():
                 hr_orig_list = [] #ground truth high resolution
                 lats_list = [] #lats
                 lons_list = [] #lons
+                inter_list = []
                 tops_list = [] 
                 for i, test_data in enumerate(test_loader):
                     idx += 1
@@ -299,6 +300,9 @@ def main():
                     preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     preds = np.exp(preds+np.log(args.k))-args.k
 
+                    inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
+                    inter = np.exp(inter+np.log(args.k))-args.k
+
                     #Get the groud truth values
                     # hr = test_data["H"].cpu().numpy()
                     # H : target
@@ -321,6 +325,7 @@ def main():
                     times_list.append(times_temp.cpu().numpy())
                     tops_list.append(top.cpu().numpy())
                     input_list.append(input_temp) #ground truth images
+                    inter_list.append(inter)                    
                     hr_list.append(hr) #grount truth
                     hr_orig_list.append(hr_orig)
                     pred_list.append(preds)  #predicted high-resolution images
@@ -329,6 +334,7 @@ def main():
                 times = np.concatenate(times_list,0)
                 pred = np.concatenate(pred_list,0)
                 intL = np.concatenate(input_list,0)
+                inter_list = np.concatenate(inter_list,0)                
                 lats_hr = np.concatenate(lats_list, 0)
                 lons_hr = np.concatenate(lons_list, 0)
                 hr_list = np.concatenate(hr_list,0)
@@ -354,9 +360,10 @@ def main():
             ds = xr.Dataset(
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
-                    fcst = (["time", "lat_in", "lon_in"], np.squeeze(pred)),
-                    hr = (["time", "lat_in", "lon_in"], hr_list),
-                    hr_orig = (["time", "lat", "lon"], hr_orig_list),
+                    inter = (["time", "lat", "lon"], np.squeeze(inter_list)),
+                    fcst = (["time", "lat", "lon"], np.squeeze(pred)),
+                    hr = (["time", "lat", "lon"], hr_list),
+                    # hr_orig = (["time", "lat", "lon"], hr_orig_list),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                     tops = (["time","lat","lon"], top_list)),

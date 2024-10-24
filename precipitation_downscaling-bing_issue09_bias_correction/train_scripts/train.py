@@ -33,10 +33,12 @@ class Weight_Loss(nn.Module):
         super(Weight_Loss, self).__init__()
     def init_w(self,y_true):
         weights = torch.tensor(y_true,requires_grad=False) # 
-        MIN = torch.tensor(np.log(1 + 1.7),dtype = weights.dtype,requires_grad=False)
-        MAX = torch.tensor(np.log(1 + 75),dtype = weights.dtype,requires_grad=False)
-        weights[y_true < MIN] = MIN 
-        weights[y_true >= MAX] = MAX
+        thresholds = torch.tensor(np.log(1 + np.array([1.5, 5, 10, 30])/0.005), dtype=weights.dtype, requires_grad=False)
+        weights[y_true < thresholds[0]] = 1
+        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 2
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 5
+        weights[(y_true >= thresholds[2]) & (y_true < thresholds[3])] = 10
+        weights[y_true >= thresholds[3]] = 30
         return weights.to('cuda') 
     def forward(self, pred, target):
         error = torch.abs(pred - target)  # L1
@@ -188,7 +190,7 @@ class BuildModel:
         self.top = data["top"].cuda()
         #print("self.top in feed data",self.top.shape)
         upsampling = Upsampling(in_channels = 1) # 8
-        self.L_inter = upsampling(self.L)
+        self.L_inter = upsampling(self.L[:,-1:,:,:])
         if self.diffusion:
             upsampling = Upsampling(in_channels = 8) # 8
             self.L = upsampling(self.L)
