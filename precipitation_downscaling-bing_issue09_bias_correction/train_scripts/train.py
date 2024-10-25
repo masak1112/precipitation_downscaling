@@ -33,12 +33,11 @@ class Weight_Loss(nn.Module):
         super(Weight_Loss, self).__init__()
     def init_w(self,y_true):
         weights = torch.tensor(y_true,requires_grad=False) # 
-        thresholds = torch.tensor(np.log(1 + np.array([1.5, 5, 10, 30])/0.005), dtype=weights.dtype, requires_grad=False)
+        thresholds = torch.tensor(np.log(1 + np.array([1.5, 5, 10])/0.005), dtype=weights.dtype, requires_grad=False)
         weights[y_true < thresholds[0]] = 1
         weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 2
-        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 5
-        weights[(y_true >= thresholds[2]) & (y_true < thresholds[3])] = 10
-        weights[y_true >= thresholds[3]] = 30
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 2.2
+        weights[y_true >= thresholds[2]] = 3
         return weights.to('cuda') 
     def forward(self, pred, target):
         error = torch.abs(pred - target)  # L1
