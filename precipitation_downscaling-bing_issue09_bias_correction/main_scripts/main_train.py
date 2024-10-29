@@ -108,7 +108,8 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                                batch_size = batch_size,
                                stat_path=train_dir,
                                patch_size=patch_size,
-                               dataset_type=dataset_type)
+                               dataset_type=dataset_type,
+                               k = k)
                                
     print("The model {} is selected for training".format(type_net))
 
@@ -150,7 +151,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                                dataset_type=dataset_type)
     else:
         #default parameters for other models (except WGAN)
-        hparams = {"G_lossfn_type": "weight_MAE",
+        hparams = {"G_lossfn_type": "l2",
                    "G_optimizer_type": "adam",
                    "G_optimizer_lr": 3.e-05,
                   "G_optimizer_betas":[0.9, 0.999],

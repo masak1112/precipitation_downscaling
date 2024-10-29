@@ -290,30 +290,31 @@ def main():
                     # input_temp = np.squeeze(input_vars[:,-1,:,:])
                     # input_temp = input_temp.cpu().numpy()
                     #input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max - vars_in_patches_min )+ vars_in_patches_min 
-                    input_temp = np.squeeze(input_vars[:,-1,:,:])  #* (vars_in_patches_std )+ vars_in_patches_avg 
-                    input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+                    input_temp = np.squeeze(input_vars[:,-1,:,:])  #* (vars_in_patches_std )+ vars_in_patches_avg
+                    input_temp = input_temp.cpu().numpy()
+                    # input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
                     model.netG_forward(i)
                     #Get the prediction values
                     # preds = model.E.cpu().numpy()
                     #preds = model.E.cpu().numpy() * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min
                     preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
-                    preds = np.exp(preds+np.log(args.k))-args.k
+                    # preds = np.exp(preds+np.log(args.k))-args.k
 
                     inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
-                    inter = np.exp(inter+np.log(args.k))-args.k
+                    # inter = np.exp(inter+np.log(args.k))-args.k
 
                     #Get the groud truth values
                     # hr = test_data["H"].cpu().numpy()
                     # H : target
                     #hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     hr = test_data["H"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
-                    hr = np.exp(hr+np.log(args.k))-args.k 
+                    # hr = np.exp(hr+np.log(args.k))-args.k 
 
                     # hr_orig =  test_data["H_orig"].cpu().numpy()
                     #hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     hr_orig =  test_data["H_orig"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
-                    hr_orig = np.exp(hr_orig+np.log(args.k ))-args.k 
+                    # hr_orig = np.exp(hr_orig+np.log(args.k ))-args.k 
                     # get the raw topograph data
                     # normalize(tops, avg = 312.71216, std = 442.65375)
                     top = top * 442.65375 + 312.71216
@@ -386,7 +387,8 @@ def main():
 
     save_paths = []
     for y in years:
-        save_paths.append(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_year_{y}.nc'))
+        save_paths.append(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_year_nolog_{y}.nc'))
+        # save_paths.append(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_year_{y}.nc'))
 
     print('save_paths: {}'.format(save_paths))
     xr.save_mfdataset(datasets, save_paths)

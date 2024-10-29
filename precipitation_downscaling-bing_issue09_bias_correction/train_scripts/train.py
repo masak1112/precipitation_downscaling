@@ -320,7 +320,10 @@ class BuildModel:
     #train model
     def fit(self):
         self.init_train()
-        current_step = self.iteration 
+        current_step = self.iteration
+        min_val_loss = float('inf')
+        patience = 75
+        trigger_times = 0 
         for epoch in range(self.epochs):
             for i, train_data in enumerate(self.train_loader):
                 st = time.time()
@@ -354,9 +357,36 @@ class BuildModel:
                     print("Time per step:", time.time() - st)
                 wandb.log({"loss": self.G_loss, "lr": lr})
             
+            val_loss = self.validate()
+            print("Epoch: {}, Training Loss: {}, Validation Loss: {}".format(epoch, self.G_loss.item(), val_loss))
+
+            if val_loss < min_val_loss:
+                min_val_loss = val_loss
+                trigger_times = 0
+            else:
+                trigger_times += 1
+                print("Early Stopping Counter: {}/{}".format(trigger_times, patience))
+                if trigger_times >= patience:
+                    print("Early stopping!")
+                    break
+    
         self.save_loss_plot()
         self.save(current_step)
 
+
+
+    def validate(self):
+        self.netG.eval()
+        val_loss = 0.0
+        count = 0
+        with torch.no_grad():
+            for j, val_data in enumerate(self.val_loader):
+                self.feed_data(val_data)
+                self.netG_forward()
+                val_loss += self.G_lossfn(self.E, self.H).item()
+                count += 1
+        self.netG.train()
+        return val_loss / count
             # with torch.no_grad():
             #     val_loss = 0
             #     counter = 0
