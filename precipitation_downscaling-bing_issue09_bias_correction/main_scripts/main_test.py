@@ -299,21 +299,36 @@ def main():
                     #preds = model.E.cpu().numpy() * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min
                     preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     preds = np.exp(preds+np.log(args.k))-args.k
+                    preds[preds<0] = 0
+                    preds[preds>50] = 50
+                    if np.any(preds.flatten() < 0, axis=0):
+                        raise ValueError("There are negative values in preds data after de-transformation")
+                    if np.any(preds.flatten() > 50):
+                        raise ValueError("There are values greater than 50 in preds data after de-transformation") 
 
                     inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     inter = np.exp(inter+np.log(args.k))-args.k
+                    inter[inter<0] = 0
+                    if np.any(inter.flatten() < 0, axis=0):
+                        raise ValueError("There are negative values in inter data after de-transformation") 
 
                     #Get the groud truth values
                     # hr = test_data["H"].cpu().numpy()
                     # H : target
                     #hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     hr = test_data["H"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
-                    hr = np.exp(hr+np.log(args.k))-args.k 
+                    hr = np.exp(hr+np.log(args.k))-args.k
+                    hr[hr<0] = 0
+                    if np.any(hr.flatten() < 0, axis=0):
+                        raise ValueError("There are negative values in HR data after de-transformation") 
 
                     # hr_orig =  test_data["H_orig"].cpu().numpy()
                     #hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     hr_orig =  test_data["H_orig"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
                     hr_orig = np.exp(hr_orig+np.log(args.k ))-args.k 
+                    hr_orig[hr_orig<0] = 0
+                    if np.any(hr_orig.flatten() < 0, axis=0):
+                        raise ValueError("There are negative values in hr_orig data after de-transformation")  
                     # get the raw topograph data
                     # normalize(tops, avg = 312.71216, std = 442.65375)
                     top = top * 442.65375 + 312.71216

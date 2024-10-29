@@ -404,6 +404,13 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         # lons_no_nan = torch.index_select(lons_patches,0,no_nan_idx)
         # lats_no_nan = torch.index_select(lats_patches,0, no_nan_idx)
         assert len(vars_out_pathes) == len(vars_in_patches)
+
+        
+        tp_min = torch.min(vars_in_patches[:, -1, :, :])
+        tp_max = torch.max(vars_in_patches[:, -1, :, :])
+
+        print("Minimum value of tp in vars_in_patches:", tp_min.item())
+        print("Maximum value of tp in vars_in_patches:", tp_max.item())
     
         return vars_in_patches, vars_out_pathes, vars_out_orig_patches, times_patches
 
