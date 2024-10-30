@@ -300,7 +300,7 @@ def main():
                     preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     preds = np.exp(preds+np.log(args.k))-args.k
                     preds[preds<0] = 0
-                    preds[preds>50] = 50
+                    preds[preds>55] = 55
                     if np.any(preds.flatten() < 0, axis=0):
                         raise ValueError("There are negative values in preds data after de-transformation")
                     if np.any(preds.flatten() > 50):
