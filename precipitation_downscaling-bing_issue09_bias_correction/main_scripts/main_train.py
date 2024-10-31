@@ -108,7 +108,8 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                                batch_size = batch_size,
                                stat_path=train_dir,
                                patch_size=patch_size,
-                               dataset_type=dataset_type)
+                               dataset_type=dataset_type,
+                               k = k)
                                
     print("The model {} is selected for training".format(type_net))
 

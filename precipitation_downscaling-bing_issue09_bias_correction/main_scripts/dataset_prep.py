@@ -409,8 +409,23 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         tp_min = torch.min(vars_in_patches[:, -1, :, :])
         tp_max = torch.max(vars_in_patches[:, -1, :, :])
 
-        print("Minimum value of tp in vars_in_patches:", tp_min.item())
-        print("Maximum value of tp in vars_in_patches:", tp_max.item())
+        print("Minimum value of tp in vars_in_patches(having log):", tp_min.item())
+        print("Maximum value of tp in vars_in_patches(having log):", tp_max.item())
+
+        # Un-log the data for analysis
+        tp_data = torch.exp(vars_in_patches[:, -1, :, :] + torch.log(torch.tensor(self.k).to("cpu"))) - self.k
+
+        # Create histogram data using numpy
+        tp_data_np = tp_data.cpu().numpy()
+        bins = [-0.1, 0.1, 1.5, 5, 10, 20, 30, np.inf]
+        counts, _ = np.histogram(tp_data_np, bins=bins)
+        counts_tensor = torch.from_numpy(counts).float()
+        total_counts = counts_tensor.sum().item()
+        percentage_counts = (counts_tensor / total_counts) * 100
+
+        print("Distribution of tp in different rainfall intervals:")
+        for i in range(len(bins)-1):
+            print(f"{bins[i]} to {bins[i+1]}: {percentage_counts[i].item():.2f}%")
     
         return vars_in_patches, vars_out_pathes, vars_out_orig_patches, times_patches
 
@@ -497,11 +512,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.idx = 0
 
         #min-max score
-        # def normalize(x, x_min,x_max):
-        #     return ((x - x_min)/(x_max-x_min))
+        def normalize(x, x_min,x_max):
+            return ((x - x_min)/(x_max-x_min))
 
-        def normalize(x, avg,std):
-            return (x-avg)/std
+        # def normalize(x, avg,std):
+        #     return (x-avg)/std
 
         
         # def normalize(x, x_min,x_max):
@@ -531,7 +546,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 for i in range(len(self.vars_in_patches_min)):
                     #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
                     if(self.vars_in[i] not in {"lsp_in", "cp_in", "tp"}): # not normalize
-                        x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
+                        x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
                     else:
                         x[jj][i] = self.vars_in_patches_list[cid][i]
                     #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
@@ -564,7 +579,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
           
                 tops = torch.from_numpy(np.expand_dims(np.transpose(tops,(1,0)),0))
 
-                x_top[jj] = normalize(tops, avg = 312.71216, std = 442.65375) #  z-score
+                x_top[jj] = normalize(tops, -182, 3846) #  z-score
                 '''
                  array(312.71216, dtype=float32),avg
                 array(442.65375, dtype=float32)) std
