@@ -197,7 +197,7 @@ class UNet(nn.Module):
         self.upsampling = Upsampling(n_channels, channels_start,upsampling=True)
 
         """encoder """
-        self.down1 = Encoder_Block(n_channels, channels_start)
+        self.down1 = Encoder_Block(n_channels+1, channels_start)
         self.down2 = Encoder_Block(channels_start, channels_start * 2, l_large=False)
         self.down3 = Encoder_Block(channels_start * 2, channels_start * 4, l_large=False)
 
@@ -210,45 +210,48 @@ class UNet(nn.Module):
 
         """decoder """
         # +++32
-        self.up1 = Decode_Block(channels_start * 8 + 32, channels_start * 4 + 32)
-        self.up2 = Decode_Block(channels_start * 4 + 32, channels_start * 2 + 32)
-        self.up3 = Decode_Block(channels_start * 2 + 32, channels_start + 32)
-        self.output = nn.Conv2d(channels_start + 32, 1, kernel_size=1, bias=True)
-        # torch.nn.init.xavier_uniform(self.output.weight)
-        final_dim = 160 * 160
-        self.fc = nn.Sequential(nn.Linear(final_dim, final_dim * 2),
-                                nn.ReLU(inplace=True),
-                                nn.Linear(final_dim * 2, final_dim))
-        # torch.nn.init.xavier_uniform(self.fc.weight)
+        self.up1 = Decode_Block(channels_start * 8, channels_start * 4)
+        self.up2 = Decode_Block(channels_start * 4, channels_start * 2)
+        self.up3 = Decode_Block(channels_start * 2, channels_start)
+        self.output = nn.Conv2d(channels_start, 1, kernel_size=1, bias=True)
+        torch.nn.init.xavier_uniform(self.output.weight)
+
 
     def forward(self, x: Tensor, topography: Tensor) -> Tensor:
         # x = x.cuda()
         # print("input shape",x.shape)
         if self.dataset_type == 'precipitation':
             x = self.upsampling(x)
+            # print("x shape:",x.shape)
         # remove top  
-        topography = nn.functional.interpolate(topography, scale_factor=1)
+        # topography = nn.functional.interpolate(topography, scale_factor=1)
+        top = nn.functional.interpolate(topography, scale_factor=1)
+        x = torch.cat((x, top), 1)
+        # print("x shape:",x.shape)
 
         s1, e1 = self.down1(x)
+        # print("e1 shape:", e1.shape)
         s2, e2 = self.down2(e1)
+        # print("e2 shape:", e2.shape)
         s3, e3 = self.down3(e2)
+        # print("e3 shape:", e3.shape)
         x4 = self.b1(e3)  # -1,448,2,2
-        top = self.top(topography) # -1,32,2,2
-        #add the topograph to the neural network
+        # print("x4 shape:", x4.shape)
+        # top = self.top(topography) # -1,32,2,2
+        # print("top shape:",top.shape)
+        # #add the topograph to the neural network
 
-        x5 = torch.cat((x4, top), 1) #-1，480， 20，20
+        # x5 = torch.cat((x4, top), 1) #-1，480， 20，20
+        # print("x5 shape:",x5.shape)
         # remove top
-        #x5 = x4
+        x5 = x4
         d1 = self.up1(x5, s3)
+        # print("d1 shape:", d1.shape)
         d2 = self.up2(d1, s2)
+        # print("d2 shape:", d2.shape)
         d3 = self.up3(d2, s1)
-        output = self.output(d3)
-        output = output.view(output.size(0), -1) 
-        output = self.fc(output)
-        # output = torch.sigmoid(output)
-        #  add relu change k(0.001 ,0.5) function  (z-score) 
-        # y = k * x + b   
-        output = output.view(output.size(0), 1, 160, 160)      
+        print("d3 shape:", d3.shape)
+        output = self.output(d3) 
         return output
 
 

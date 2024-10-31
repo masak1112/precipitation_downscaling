@@ -331,7 +331,7 @@ def main():
                         raise ValueError("There are negative values in hr_orig data after de-transformation")  
                     # get the raw topograph data
                     # normalize(tops, avg = 312.71216, std = 442.65375)
-                    top = top * 442.65375 + 312.71216
+                    top = top *(3846+182) -182
 
                     
                     lats_list.append(lats)
