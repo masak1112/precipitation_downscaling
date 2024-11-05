@@ -65,7 +65,7 @@ def main():
     netG, _ = get_model(args.model_type, args.dataset_type, img_size, n_channels, upscale)
 
     #default parameters
-    hparams =  {"G_lossfn_type": "l2",
+    hparams =  {"G_lossfn_type": "weight_MAE",
               "G_optimizer_type": "adam",
                "G_optimizer_lr": 5.e-04,
                 "G_optimizer_betas":[0.9, 0.999],
@@ -303,8 +303,8 @@ def main():
                     preds[preds>55] = 55
                     if np.any(preds.flatten() < 0, axis=0):
                         raise ValueError("There are negative values in preds data after de-transformation")
-                    if np.any(preds.flatten() > 50):
-                        raise ValueError("There are values greater than 50 in preds data after de-transformation") 
+                    if np.any(preds.flatten() > 55):
+                        raise ValueError("There are values greater than 55 in preds data after de-transformation") 
 
                     inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     inter = np.exp(inter+np.log(args.k))-args.k

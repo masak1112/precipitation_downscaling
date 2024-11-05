@@ -33,11 +33,12 @@ class Weight_Loss(nn.Module):
         super(Weight_Loss, self).__init__()
     def init_w(self,y_true):
         weights = torch.tensor(y_true,requires_grad=False) # 
-        thresholds = torch.tensor(np.log(1 + np.array([1.5, 5, 10])/0.008), dtype=weights.dtype, requires_grad=False)
+        thresholds = torch.tensor(np.log(1 + np.array([0.1, 1.2, 4.2, 8])/0.008), dtype=weights.dtype, requires_grad=False) #1.5 5 10
         weights[y_true < thresholds[0]] = 1
-        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 3
-        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 5
-        weights[y_true >= thresholds[2]] = 8
+        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 1.5
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 10 #10 #8 #6 #3.5 #2
+        weights[(y_true >= thresholds[2]) & (y_true < thresholds[3])] = 85 #80 #50 #20 #15 #6 #3
+        weights[y_true >= thresholds[3]] = 180 #150 #100 #60 #50 #12 #8
         return weights.to('cuda') 
     def forward(self, pred, target):
         error = torch.abs(pred - target)  # L1
@@ -322,7 +323,7 @@ class BuildModel:
         self.init_train()
         current_step = self.iteration 
         min_val_loss = float('inf')
-        patience = 78
+        patience = 100
         trigger_times = 0 
         for epoch in range(self.epochs):
             for i, train_data in enumerate(self.train_loader):
