@@ -417,7 +417,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         # Create histogram data using numpy
         tp_data_np = tp_data.cpu().numpy()
-        bins = [-0.1, 0.1, 1.5, 5, 10, 20, 30, np.inf]
+        bins = [-0.1, 0.1, 2, 4, 8, 20, 30, np.inf]
         counts, _ = np.histogram(tp_data_np, bins=bins)
         counts_tensor = torch.from_numpy(counts).float()
         total_counts = counts_tensor.sum().item()
@@ -426,6 +426,19 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         print("Distribution of tp in different rainfall intervals:")
         for i in range(len(bins)-1):
             print(f"{bins[i]} to {bins[i+1]}: {percentage_counts[i].item():.2f}%")
+
+        # Un-log the data for vars_out_orig_patches
+        tp_data_out = torch.exp(vars_out_orig_patches + torch.log(torch.tensor(self.k).to("cpu"))) - self.k
+        tp_data_out_np = tp_data_out.cpu().numpy()  # Convert to numpy for histogram calculation
+        counts_out, _ = np.histogram(tp_data_out_np, bins=bins)
+        counts_out_tensor = torch.from_numpy(counts_out).float()
+        total_counts_out = counts_out_tensor.sum().item()
+        percentage_counts_out = (counts_out_tensor / total_counts_out) * 100
+
+        print("Distribution of tp in vars_out_orig_patches in different rainfall intervals:")
+        for i in range(len(bins)-1):
+            print(f"{bins[i]} to {bins[i+1]}: {percentage_counts_out[i].item():.2f}%")
+
     
         return vars_in_patches, vars_out_pathes, vars_out_orig_patches, times_patches
 
