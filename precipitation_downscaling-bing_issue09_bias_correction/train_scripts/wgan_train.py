@@ -12,6 +12,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import DataLoader
 from models.network_unet import UNet
+from models.network_unet import Upsampling
 from models.network_critic import Discriminator
 from torch.autograd import Variable
 import torch.autograd as autograd
@@ -23,12 +24,34 @@ from utils.other_utils import dotdict
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cuda = True if torch.cuda.is_available() else False
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+import matplotlib.pyplot as plt
 
+class Weight_Loss(nn.Module):
+    def __init__(self):
+        super(Weight_Loss, self).__init__()
+    def init_w(self,y_true):
+        weights = torch.tensor(y_true,requires_grad=False) # 
+        thresholds = torch.tensor(np.log(1 + np.array([1.2, 4.2, 8])/0.008), dtype=weights.dtype, requires_grad=False) #1.5 5 10
+        weights[y_true < thresholds[0]] = 1
+        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 10 #10 #8 #6 #3.5 #2
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 80 #80 #50 #20 #15 #6 #3
+        weights[y_true >= thresholds[2]] = 150 #150 #100 #60 #50 #12 #8
+        return weights.to('cuda') 
+    def forward(self, pred, target):
+        error = torch.abs(pred - target)  # L1
+        #error = torch.pow(error, 2)  # L2
+        w = self.init_w(target)
+        return torch.mean(w * error)
+    
 def recon_loss(real_data, gen_data):
-    # initialize reconstruction loss
-    b_loss = torch.mean(torch.abs(gen_data - real_data))
-    rloss = torch.abs(gen_data - real_data).mean()
-    return rloss
+    weighted_loss = Weight_Loss()
+    return weighted_loss(gen_data, real_data)
+
+# def recon_loss(real_data, gen_data):
+#     # initialize reconstruction loss
+#     b_loss = torch.mean(torch.abs(gen_data - real_data))
+#     rloss = torch.abs(gen_data - real_data).mean()
+#     return rloss
 
 
 def get_lr_decay(hparams: dict = None):
@@ -85,6 +108,10 @@ class BuildWGANModel:
         self.G_optimizer_lr = self.hparams.lr_gn
         self.opt_critic = optim.Adam(self.critic.parameters(), lr=self.hparams.lr_critic, betas=(0.5, 0.999))
         self.opt_gen = optim.Adam(self.generator.parameters(), lr=self.hparams.lr_gn, betas=(0.5, 0.999))
+        self.epoch_gen_losses = []
+        self.epoch_critic_losses = []
+        self.epoch_baseline_losses = []
+        self.epoch_recon_losses = []
 
         self.scheduler_critic = lr_scheduler.ReduceLROnPlateau(self.opt_critic)
         self.scheduler_gen = lr_scheduler.ReduceLROnPlateau(self.opt_gen)
@@ -107,6 +134,10 @@ class BuildWGANModel:
         jj = 0
 
         for epoch in range(self.hparams.epochs):
+            epoch_gen_loss = []
+            epoch_critic_loss = []
+            epoch_baseline_loss = []
+            epoch_recon_loss = []
 
             if jj == self.hparams.critic_iterations:
                 jj = 0
@@ -127,6 +158,8 @@ class BuildWGANModel:
                     input_data = train_data['L'].to(device)
                     target_data = train_data['H'][:, None].to(device)
                     top =  train_data["top"].to(device)
+                    upsampling = Upsampling(in_channels=1) 
+                    self.L_inter = upsampling(input_data[:, -1:, :, :])
                 else:
                     input_data = train_data[0].to(device)
                     target_data = train_data[1].to(device)
@@ -143,6 +176,7 @@ class BuildWGANModel:
 
                 loss_critic.backward()
                 self.opt_critic.step()
+                epoch_critic_loss.append(loss_critic.item())
 
                 self.opt_gen.zero_grad()
 
@@ -162,20 +196,26 @@ class BuildWGANModel:
 
                     g_loss.backward()
                     self.opt_gen.step()
+                    epoch_gen_loss.append(g_loss.item())
+                    epoch_recon_loss.append(loss_rec.item())
 
                     val_loss = loss_rec.item()
 
-                    # print(
-                    #     "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [Rec loss: %f]"
-                    #     % (epoch, self.hparams.epochs, i, len(self.train_dataloader), loss_critic.item(), g_loss.item(),
-                    #        loss_rec.item())
-                    # )
+                baseline_loss = recon_loss(target_data, self.L_inter)
+                epoch_baseline_loss.append(baseline_loss.item())
+            
+            self.epoch_gen_losses.append(np.mean(epoch_gen_loss))
+            self.epoch_critic_losses.append(np.mean(epoch_critic_loss))
+            self.epoch_baseline_losses.append(np.mean(epoch_baseline_loss))
+            self.epoch_recon_losses.append(np.mean(epoch_recon_loss))
+            avg_gen_loss = sum(epoch_gen_loss) / len(epoch_gen_loss)
+            avg_critic_loss = sum(epoch_critic_loss) / len(epoch_critic_loss)
+            avg_recon_loss = sum(epoch_recon_loss) / len(epoch_recon_loss)
 
             print('++++++++++++++++++++++++++++++++')
             print(
-                "[Epoch %d/%d] [Batch %d] [D loss: %f] [G loss: %f] [Rec loss: %f]"
-                % (epoch, self.hparams.epochs, i, loss_critic.item(), g_loss.item(),
-                   val_loss)
+                "[Epoch %d/%d] [Avg D loss: %f] [Avg G loss: %f] [Avg Rec loss: %f]"
+                % (epoch + 1, self.hparams.epochs, avg_critic_loss, avg_gen_loss, avg_recon_loss)
             )
 
             loss_val_c, loss_val_gen, loss_rec, count_1, lr_g, lr_c = self.validation()
@@ -183,7 +223,7 @@ class BuildWGANModel:
 
             print(
                 "[Epoch %d/%d] [D Val loss: %f] [G loss: %f] [Rec loss: %f] [LR C: %f] [LR G: %f]"
-                % (epoch, self.hparams.epochs, loss_val_c / count_1, loss_val_gen / count_1, loss_rec / count_1,
+                % (epoch+1, self.hparams.epochs, loss_val_c / count_1, loss_val_gen / count_1, loss_rec / count_1,
                    lr_c, lr_g)
             )
 
@@ -193,6 +233,33 @@ class BuildWGANModel:
             self.scheduler_gen.step(loss_rec / count_1)
 
             jj += 1
+              
+        self.plot_losses()
+
+    def plot_losses(self):
+        epochs = range(len(self.epoch_gen_losses))
+        # Plot for Generator Loss
+        plt.figure(figsize=(10, 5))
+        plt.plot(epochs, self.epoch_gen_losses, label='Average Generator Loss', color='blue')
+        plt.title('Generator Loss Over Epochs')
+        plt.xlabel('Epoch')
+        plt.ylabel('Generator Loss')
+        plt.legend()
+        plt.savefig(os.path.join(self.save_dir, 'generator_loss_plot_over_epochs.png'))
+        plt.close()
+
+        # Plot for Critic, Baseline and Reconstruction Loss
+        plt.figure(figsize=(10, 5))
+        plt.plot(epochs, self.epoch_critic_losses, label='Average Critic Loss', color='red')
+        plt.plot(epochs, self.epoch_baseline_losses, label='Average Baseline Loss', linestyle='--', color='green')
+        plt.plot(epochs, self.epoch_recon_losses, label='Average Reconstruction Loss', linestyle='-.', color='purple')
+        plt.title('Critic, Baseline and Reconstruction Losses Over Epochs')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.savefig(os.path.join(self.save_dir, 'other_losses_plot_over_epochs.png'))
+        plt.close()
+
 
 
     def update_lr(self, epoch: int = None):
@@ -236,9 +303,7 @@ class BuildWGANModel:
 
             # Critic loss calculation
             gp = self.compute_gradient_penalty(target_data, generator_output, device=device)
-            loss_critic = (
-                    -(torch.mean(critic_real) - torch.mean(critic_fake)) + self.hparams.lambada_gp * gp
-            )
+            loss_critic = -torch.mean(critic_real) + torch.mean(critic_fake) + self.hparams.lambada_gp * gp
 
             check = self.gradient_penalty(target_data, generator_output, device=device)
 
@@ -259,7 +324,7 @@ class BuildWGANModel:
         lr_g = get_lr(self.opt_gen)
         lr_c = get_lr(self.opt_critic)
 
-        return loss_c, g_loss, loss_r, count, lr_g, lr_c
+        return loss_c, loss_g, loss_r, count, lr_g, lr_c
 
     def save_checkpoint(self, epoch: int = None, loss_g: float = None, loss_cr: float = None, step: int = None):
         """

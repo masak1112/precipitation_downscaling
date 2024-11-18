@@ -87,7 +87,7 @@ def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
     elif type_net == "wgan":
         netG = unet(n_channels=n_channels, 
                     dataset_type=dataset_type)
-        netC = critic((1, img_size[0], img_size[1]))
+        netC = critic((1, img_size[0]*10, img_size[1]*10))
 
     else:
         raise NotImplementedError

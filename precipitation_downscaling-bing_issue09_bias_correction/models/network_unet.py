@@ -250,7 +250,7 @@ class UNet(nn.Module):
         d2 = self.up2(d1, s2)
         # print("d2 shape:", d2.shape)
         d3 = self.up3(d2, s1)
-        print("d3 shape:", d3.shape)
+        # print("d3 shape:", d3.shape)
         output = self.output(d3) 
         return output
 
