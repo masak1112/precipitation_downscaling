@@ -225,7 +225,7 @@ class UNet_diff(nn.Module):
         
 
         """encoder """
-        self.down1 = Encoder_Block(in_channels = n_channels, out_channels = channels_start, time_emb_dim = time_dim)
+        self.down1 = Encoder_Block(in_channels = n_channels+1, out_channels = channels_start, time_emb_dim = time_dim)
         self.down2 = Encoder_Block(in_channels = channels_start, out_channels = channels_start*2, time_emb_dim = time_dim)
         self.down3 = Encoder_Block(in_channels = channels_start*2, out_channels = channels_start*4, time_emb_dim = time_dim)
 
@@ -236,26 +236,29 @@ class UNet_diff(nn.Module):
         self.top = Conv_top(in_channels=1, out_channels=8, kernel_size=3, bias=True)
 
         """decoder """
-        self.up1 = Decode_Block(in_channels = channels_start*8 + 32, out_channels = channels_start*4 +32 , time_emb_dim = time_dim)
-        self.up2 = Decode_Block(in_channels = channels_start*4 + 32, out_channels = channels_start*2 +32, time_emb_dim = time_dim)
-        self.up3 = Decode_Block(in_channels = channels_start*2 + 32, out_channels = channels_start + 32, time_emb_dim = time_dim)
+        self.up1 = Decode_Block(in_channels = channels_start*8 , out_channels = channels_start*4, time_emb_dim = time_dim)
+        self.up2 = Decode_Block(in_channels = channels_start*4 , out_channels = channels_start*2, time_emb_dim = time_dim)
+        self.up3 = Decode_Block(in_channels = channels_start*2 , out_channels = channels_start, time_emb_dim = time_dim)
 
-        self.output = nn.Conv2d(channels_start+32, 1, kernel_size=1, bias=True)
+        self.output = nn.Conv2d(channels_start, 1, kernel_size=1, bias=True)
         torch.nn.init.xavier_uniform(self.output .weight)
 
 
     def forward(self, x:Tensor,time: Tensor = torch.tensor(-1), topograhpy=None)->Tensor:
         
         t = self.time_mlp(time) if exists(self.time_mlp) else None
-        print("t in Unet is ",t)
+        # print("t in Unet is ",t)
+        top = nn.functional.interpolate(topograhpy, scale_factor=1)
+        x = torch.cat((x, top), 1)
 
         s1, e1 = self.down1(x, t)
         s2, e2 = self.down2(e1, t)
         s3, e3 = self.down3(e2, t)
         x4 = self.b1(e3, t)
-        top = self.top(topograhpy)
-        #add the topograph to the neural network
-        x5 = torch.cat((x4, top), 1) #16，480， 20，20
+        # top = self.top(topograhpy)
+        # #add the topograph to the neural network
+        # x5 = torch.cat((x4, top), 1) #16，480， 20，20
+        x5 = x4
 
         d1 = self.up1(x5, s3, t)
         d2 = self.up2(d1, s2, t)
@@ -263,5 +266,11 @@ class UNet_diff(nn.Module):
         output = self.output(d3)
         return output
 
+# net = UNet_diff(n_channels = 11, img_size = 160)
 
+# x = torch.rand((24,11,160,160))
+# top = torch.rand((24,1,160,160))
+# time = torch.randint(0, 100, (24,)) 
+# pred = net(x,time, top)
+# print(pred.shape)
 

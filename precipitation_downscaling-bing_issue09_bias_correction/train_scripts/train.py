@@ -191,7 +191,7 @@ class BuildModel:
         upsampling = Upsampling(in_channels = 1) # 8
         self.L_inter = upsampling(self.L[:,-1:,:,:])
         if self.diffusion:
-            upsampling = Upsampling(in_channels = 8) # 8
+            upsampling = Upsampling(in_channels = 10) # 8
             self.L = upsampling(self.L)
         self.H = data['H'].cuda()
 
@@ -224,21 +224,26 @@ class BuildModel:
           
             gd = GaussianDiffusion(model = self.netG, timesteps = 200, conditional=self.conditional)
             x_noisy = gd.q_sample(x_start = self.hr, t = t, noise=noise)
-            print("x_nosey shape", x_noisy.shape) #[16,1,160,160][batch_size,chanel,img,img]
+            # print("x_nosey shape", x_noisy.shape) #[16,1,160,160][batch_size,chanel,img,img]
+
+            noise_samples_dir = os.path.join(self.save_dir, 'noise_samples')
+            os.makedirs(noise_samples_dir, exist_ok=True)  
 
             #save noise images
-            if idx < 3:
+            if idx >= 0 and idx < 3:
                 examples = [self.hr.detach().cpu().numpy()]
-                with open('example_5132_idx_{}_t_0.pkl'.format(idx),'wb') as f:
+                example_path = os.path.join(noise_samples_dir, f'example_5132_idx_{idx}_t_0.pkl')
+                with open(example_path,'wb') as f:
                     pickle.dump(examples, f)
 
                 for i in [1, 50, 100, 150, 199]:
                     j = [i] * h_shape[0]
                     #i = torch.range(1, 16*10, step=10, device = device).long()
                     noise_image = gd.q_sample(x_start = self.hr, t = torch.from_numpy(np.array(j)),noise=noise).detach().cpu().numpy()
+                    noise_image_path = os.path.join(noise_samples_dir, f'example_5132_idx_{idx}_t_{i}.pkl')
                     #dtype=torch.int, device=device
                     #examples.append(noise_image)
-                    with open('example_5132_idx_{}_t_{}.pkl'.format(idx,i),'wb') as f:
+                    with open(noise_image_path,'wb') as f:
                         pickle.dump(noise_image, f)
                             
             self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t, self.top)
@@ -258,11 +263,11 @@ class BuildModel:
         if not len(self.E.shape) == len(self.H.shape):
             raise ("The shape of generated data and ground truth are not the same as above")
         self.G_loss = self.G_lossfn(self.E, self.H)  # pred / target
-        self.G_loss_base = self.G_lossfn(self.L_inter,self.H)  # input[:-1:] / target
+        # self.G_loss_base = self.G_lossfn(self.L_inter,self.H)  # input[:-1:] / target
         #print('input / target',self.L[:,-1,:,:].unsqueeze(1).shape, self.H.shape)(-1,h,16,16) (-1,1,16,16)
         if current_step % self.log_interval == 0 or current_step == 1:
             self.loss_history.append((current_step, self.G_loss.item()))
-            self.loss_baseline_history.append((current_step, self.G_loss_base.item()))
+            # self.loss_baseline_history.append((current_step, self.G_loss_base.item()))
         self.G_loss.backward()
         self.G_optimizer.step()
 
@@ -297,32 +302,31 @@ class BuildModel:
 
     def save_loss_plot(self,window_size = 2):
         steps, losses = zip(*self.loss_history)
-        _, losses_base = zip(*self.loss_baseline_history)
+        # _, losses_base = zip(*self.loss_baseline_history)
         # avg
         losses = np.array(losses)
         indices = np.arange(0, len(steps), window_size)
         losses = [losses[i:i + window_size].mean() for i in indices]
 
-        losses_base = np.array(losses_base)
-        losses_base = [losses_base[i:i + window_size].mean() for i in indices]
+        # losses_base = np.array(losses_base)
+        # losses_base = [losses_base[i:i + window_size].mean() for i in indices]
         steps = range(len(losses))
         plt.figure(figsize=(10, 5))
-        plt.plot(steps, losses, label='Training Loss', color='blue')  # Plotting training loss
-        plt.plot(steps, losses_base, label='Baseline Loss(interpolation)', color='orange')  # Plotting baseline loss
+        plt.plot(steps, losses, label='Training Loss', color='blue') 
         plt.title(f'Training Loss Over Steps (window_size = {window_size})')
         plt.xlabel('Steps')
         plt.ylabel('Loss')
         plt.legend()
-        plt.grid(True)
-        plt.savefig(os.path.join(self.save_dir, 'training_loss_curve.png'))  
-        plt.close()
+        plt.grid(True) 
+        plt.savefig(os.path.join(self.save_dir, 'training_loss_curve.png'))
+        plt.close() 
 
     #train model
     def fit(self):
         self.init_train()
         current_step = self.iteration 
         min_val_loss = float('inf')
-        patience = 100
+        patience = 120
         trigger_times = 0 
         for epoch in range(self.epochs):
             for i, train_data in enumerate(self.train_loader):
@@ -382,7 +386,7 @@ class BuildModel:
         with torch.no_grad():
             for j, val_data in enumerate(self.val_loader):
                 self.feed_data(val_data)
-                self.netG_forward()
+                self.netG_forward(idx=-1)
                 val_loss += self.G_lossfn(self.E, self.H).item()
                 count += 1
         self.netG.train()

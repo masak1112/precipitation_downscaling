@@ -65,9 +65,9 @@ def main():
     netG, _ = get_model(args.model_type, args.dataset_type, img_size, n_channels, upscale)
 
     #default parameters
-    hparams =  {"G_lossfn_type": "weight_MAE",
+    hparams =  {"G_lossfn_type": "l2",
               "G_optimizer_type": "adam",
-               "G_optimizer_lr": 5.e-04,
+               "G_optimizer_lr": 3.e-04,
                 "G_optimizer_betas":[0.9, 0.999],
                 "G_optimizer_wd": 5.e-04,
                 "timesteps":200,
@@ -116,6 +116,7 @@ def main():
             lons_list = []       #lons
             pred_first_list = []
             pred_last_list = []
+            inter_list = []
             for i, test_data in enumerate(test_loader):
                 idx += 1
                 batch_size = test_data["L"].shape[0]
@@ -136,7 +137,7 @@ def main():
                 input_vars = test_data["L"]
                 #input_temp = input_vars[:,-1,:,:].cpu().numpy()
                 input_temp = input_vars[:,-1,:,:].cpu().numpy()
-                input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
+                input_temp = np.squeeze(input_vars[:,-1,:,:]).cpu().numpy()# * (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
                 input_temp = np.exp(input_temp+np.log(args.k))-args.k
  
 
@@ -162,7 +163,7 @@ def main():
                 # preds[preds>=-2] = 10**preds[preds>=-2]
                 #sample_last_clip = (sample_last + 1)/2
                 #preds = preds * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min 
-                preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                # preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 #log-transform -> log(x+k)-log(k)
                 preds =np.exp(preds+np.log(args.k))-args.k
                 sample_first = samples[0].cpu().numpy()
@@ -179,12 +180,22 @@ def main():
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
                 #hr = model.hr.cpu().numpy()
-                hr = (model.hr.cpu().numpy()) * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                hr = model.hr.cpu().numpy() # * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 hr = np.exp(hr+np.log(args.k))-args.k
+                hr[hr<0] = 0
+                if np.any(hr.flatten() < 0, axis=0):
+                    raise ValueError("There are negative values in HR data after de-transformation") 
+                
+                inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
+                inter = np.exp(inter+np.log(args.k))-args.k
+                inter[inter<0] = 0
+                if np.any(inter.flatten() < 0, axis=0):
+                    raise ValueError("There are negative values in inter data after de-transformation") 
                 
                 input_list.append(input_temp) #ground truth images
                 lats_list.append(lats)
                 lons_list.append(lons)
+                inter_list.append(inter)
                 ref_list.append(ref)  #true noise
                 noise_pred_list.append(noise_pred) # predicted noise
                 pred_list.append(preds)  #predicted high-resolution images
@@ -208,6 +219,7 @@ def main():
         intL = np.concatenate(input_list,0)
         lats_hr = np.concatenate(lats_list, 0)
         lons_hr = np.concatenate(lons_list, 0)
+        inter_list = np.concatenate(inter_list,0)
         hr_list = np.concatenate(hr_list,0)
 
                 
@@ -248,6 +260,7 @@ def main():
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
                     hr = (["time", "lat", "lon"], hr_list),
+                    inter = (["time", "lat", "lon"], np.squeeze(inter_list)),
                     lats = (["time", "lat"], lats_hr),
                     lons = (["time", "lon"], lons_hr),
                     ),

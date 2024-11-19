@@ -61,7 +61,7 @@ def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
 
     elif type_net == "diffusion":
         # add one channel for the noise
-        netG = UNet_diff(img_size=img_size[0],
+        netG = UNet_diff(img_size=img_size[0]*10,
                          n_channels=n_channels+1)
     # elif type_net == "diffusion2":
     #     netG = UNetModel(image_size = img_size[0],
