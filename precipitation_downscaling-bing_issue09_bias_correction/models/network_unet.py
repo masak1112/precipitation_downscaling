@@ -255,13 +255,13 @@ class UNet(nn.Module):
         return output
 
 
-net = UNet(n_channels = 10)
+# net = UNet(n_channels = 10)
 
-x = torch.rand((24,10,16,16))
-top = torch.rand((24,1,160,160))
+# x = torch.rand((24,10,16,16))
+# top = torch.rand((24,1,160,160))
 
-pred = net(x,top)
-print(pred.shape)
+# pred = net(x,top)
+# print(pred.shape)
 '''
 --train_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/train --val_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/val/2017-01 --save_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/zx_results/ex6 --model_type fc --epochs 50
 '''

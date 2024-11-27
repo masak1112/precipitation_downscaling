@@ -13,7 +13,8 @@ __email__ = "b.gong@fz-juelich.de"
 __author__ = "Bing Gong"
 __date__ = "2022-11-28"
 
-
+import os
+import pickle
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -155,7 +156,8 @@ class GaussianDiffusion(nn.Module):
 
 
     @torch.no_grad()
-    def p_sample_loop(self, shape, x_in=None, top=None):
+    # def p_sample_loop(self, shape, x_in=None, top=None):
+    def p_sample_loop(self, shape, x_in=None, top=None, save_dir=None, idx=None, time_steps=[1, 50, 100, 150, 200, 250, 300, 350, 400, 449]):
        
         b = shape[0]
         img = torch.randn(shape, device = device)
@@ -174,16 +176,26 @@ class GaussianDiffusion(nn.Module):
             return imgs
         else:
             print("Start the p_sample_loop for conditional diffusion")
+            if (idx >= 0 and idx < 3) and save_dir is not None:
+                os.makedirs(save_dir, exist_ok=True)
+            
             for i in tqdm(reversed(range(0, self.timesteps)),
                           desc = 'sampling loop time step',
                           total = self.timesteps):
                 img = self.p_sample(img, torch.full((b,), i, device = device, dtype = torch.long),
                                     i, condition_x = x_in, top=top)
                 imgs.append(img)
+                if (idx >= 0 and idx < 3) and i in time_steps:
+                    noise_image_path = os.path.join(save_dir, f'example_5132_idx_{idx}_denoise_t_{i}.pkl')
+                    with open(noise_image_path, 'wb') as f:
+                        pickle.dump(img.cpu().numpy(), f)
+
             return imgs
         
     @torch.no_grad()
-    def sample(self, image_size=160, batch_size=16, x_in=None,top=None):
+    # def sample(self, image_size=160, batch_size=16, x_in=None,top=None):
+    def sample(self, image_size=160, batch_size=16, x_in=None, top=None, save_dir=None, idx=None):
   
-        return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in, top=top)
+        # return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in, top=top)
+        return self.p_sample_loop(shape=(batch_size, 1, image_size, image_size), x_in=x_in, top=top, save_dir=save_dir, idx=idx)
 

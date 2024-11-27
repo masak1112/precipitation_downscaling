@@ -74,7 +74,7 @@ def main():
                 "conditional": True,
                 "diffusion":diffusion}
 
-    model = BuildModel(netG, diffusion=diffusion, conditional=True, hparams=hparams)
+    model = BuildModel(netG, save_dir = args.save_dir, diffusion=diffusion, conditional=True, hparams=hparams)
 
     test_loader = create_loader(file_path=args.test_dir,
                                 mode="test",
@@ -89,10 +89,10 @@ def main():
     with open(stat_file,'r') as f:
         stat_data = json.load(f)
 
-    # vars_in_patches_min = stat_data['tp_min']
-    # vars_in_patches_max  = stat_data['tp_max']
-    # vars_in_patches_avg = stat_data['tp_avg']
-    # vars_in_patches_std  = stat_data['tp_std']
+    vars_in_patches_min = stat_data['tp_min']
+    vars_in_patches_max  = stat_data['tp_max']
+    vars_in_patches_avg = stat_data['tp_avg']
+    vars_in_patches_std  = stat_data['tp_std']
     vars_out_patches_min = stat_data['yw_hourly_tar_min']
     vars_out_patches_max  = stat_data['yw_hourly_tar_max']
     vars_out_patches_avg = stat_data['yw_hourly_tar_avg']
@@ -116,6 +116,9 @@ def main():
             lons_list = []       #lons
             pred_first_list = []
             pred_last_list = []
+            pred_50_list = []
+            pred_100_list = []
+            pred_150_list = []
             inter_list = []
             for i, test_data in enumerate(test_loader):
                 idx += 1
@@ -137,23 +140,27 @@ def main():
                 input_vars = test_data["L"]
                 #input_temp = input_vars[:,-1,:,:].cpu().numpy()
                 input_temp = input_vars[:,-1,:,:].cpu().numpy()
-                input_temp = np.squeeze(input_vars[:,-1,:,:]).cpu().numpy()# * (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
+                # input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
+                input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_std) + vars_in_patches_avg).cpu().numpy()
                 input_temp = np.exp(input_temp+np.log(args.k))-args.k
  
 
                 with torch.no_grad():
                     model.netG_forward(i)
                 
-                gd = GaussianDiffusion(conditional=True, timesteps=200, model=model.netG)
+                gd = GaussianDiffusion(conditional=True, timesteps=450, model=model.netG)
                 #now, we only use the unconditional difussion model, meaning the inputs are only noise.
                 #This is the first test, later, we will figure out how to use conditioanl difussion model.
                 print("Start reverse process")
 
                 x_in = model.L
-                samples = gd.sample(image_size=image_size, 
-                                    batch_size=batch_size, 
-                                    x_in=x_in, top=top)
-                
+                save_dir = os.path.join(args.save_dir, 'denoise_samples')
+                samples = gd.sample(image_size=image_size,
+                                        batch_size=batch_size,
+                                        x_in=x_in,
+                                        top=top,
+                                        save_dir=save_dir,
+                                        idx=i)
                 print("len of of samples,", len(samples))
                 #chose the last channle and last varialbe (precipitation)
                 sample_last = samples[-1].cpu().numpy()  #
@@ -162,15 +169,15 @@ def main():
                 #preds[preds<-2] = 0
                 # preds[preds>=-2] = 10**preds[preds>=-2]
                 #sample_last_clip = (sample_last + 1)/2
-                #preds = preds * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min 
                 # preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                preds = preds * (vars_out_patches_std) + vars_out_patches_avg
                 #log-transform -> log(x+k)-log(k)
                 preds =np.exp(preds+np.log(args.k))-args.k
                 sample_first = samples[0].cpu().numpy()
 
-                # sample_50 = samples[50].cpu().numpy()
-                # sample_100 = samples[100].cpu().numpy()
-                # sample_150 = samples[150].cpu().numpy()
+                sample_50 = samples[50].cpu().numpy()
+                sample_100 = samples[100].cpu().numpy()
+                sample_150 = samples[150].cpu().numpy()
                 # we can make some plot here
                 #all_sample_list = all_sample_list.append(sample_last)
                 #preds = sample_last.cpu().numpy()
@@ -180,13 +187,15 @@ def main():
                 noise_pred = model.E.cpu().numpy() #predict the noise
                 
                 #hr = model.hr.cpu().numpy()
-                hr = model.hr.cpu().numpy() # * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                # hr = (model.hr.cpu().numpy())  * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
+                hr = (model.hr.cpu().numpy()) * (vars_out_patches_std) + vars_out_patches_avg
                 hr = np.exp(hr+np.log(args.k))-args.k
                 hr[hr<0] = 0
                 if np.any(hr.flatten() < 0, axis=0):
                     raise ValueError("There are negative values in HR data after de-transformation") 
                 
-                inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
+                # inter = model.L_inter.cpu().numpy() * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min 
+                inter = model.L_inter.cpu().numpy() * (vars_in_patches_std) + vars_in_patches_avg
                 inter = np.exp(inter+np.log(args.k))-args.k
                 inter[inter<0] = 0
                 if np.any(inter.flatten() < 0, axis=0):
@@ -201,9 +210,9 @@ def main():
                 pred_list.append(preds)  #predicted high-resolution images
                 pred_last_list.append(sample_last)
                 pred_first_list.append(sample_first)
-                # pred_100_list.append(sample_100)
-                # pred_50_list.append(sample_50)
-                # pred_150_list.append(sample_150)
+                pred_100_list.append(sample_100)
+                pred_50_list.append(sample_50)
+                pred_150_list.append(sample_150)
                 hr_list.append(hr) #grount truth
         
         cidx = np.squeeze(np.concatenate(cidx_list,0))
@@ -211,9 +220,9 @@ def main():
         pred = np.concatenate(pred_list,0)
         pred_last = np.concatenate(pred_last_list,0)
         pred_first = np.concatenate(pred_first_list,0)
-        # pred_50 = np.concatenate(pred_50_list,0)
-        # pred_100 = np.concatenate(pred_100_list,0)
-        # pred_150 = np.concatenate(pred_150_list,0)
+        pred_50 = np.concatenate(pred_50_list,0)
+        pred_100 = np.concatenate(pred_100_list,0)
+        pred_150 = np.concatenate(pred_150_list,0)
         pred = np.concatenate(pred_list,0)
         ref = np.concatenate(ref_list,0)
         intL = np.concatenate(input_list,0)
@@ -230,9 +239,9 @@ def main():
 
         if len(pred.shape) == 4:
             pred = pred[:, 0 , : ,:]
-            #pred_50 = pred_50[:, 0 , : ,:]
-            #pred_100 = pred_100[:, 0 , : ,:]
-            #pred_150 = pred_150[:, 0 , : ,:]
+            pred_50 = pred_50[:, 0 , : ,:]
+            pred_100 = pred_100[:, 0 , : ,:]
+            pred_150 = pred_150[:, 0 , : ,:]
             pred_first = pred_first[:, 0 , : ,:]
             pred_last = pred_last[:, 0 , : ,:]
         if len(ref.shape) == 4:
@@ -252,11 +261,11 @@ def main():
                     inputs = (["time", "lat_in", "lon_in"], intL),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
                     fcst_first = (["time", "lat", "lon"], np.squeeze(pred_first)),
-                    fcast_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
+                    fcst_last=(["time", "lat", "lon"], np.squeeze(pred_last)),
                     
-                    #fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
-                    #fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
-                    #fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
+                    fcst_50 = (["time", "lat", "lon"], np.squeeze(pred_50)),
+                    fcst_100 = (["time", "lat", "lon"], np.squeeze(pred_100)),
+                    fcst_150 = (["time", "lat", "lon"], np.squeeze(pred_150)),
                     refe = (["time", "lat", "lon"], ref),
                     noiseP = (["time", "lat", "lon"], noiseP),
                     hr = (["time", "lat", "lon"], hr_list),

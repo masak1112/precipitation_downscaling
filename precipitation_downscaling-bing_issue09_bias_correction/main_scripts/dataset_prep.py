@@ -525,11 +525,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.idx = 0
 
         #min-max score
-        def normalize(x, x_min,x_max):
-            return ((x - x_min)/(x_max-x_min))
+        # def normalize(x, x_min,x_max):
+        #     return ((x - x_min)/(x_max-x_min))
 
-        # def normalize(x, avg,std):
-        #     return (x-avg)/std
+        def normalize(x, avg,std):
+            return (x-avg)/std
 
         
         # def normalize(x, x_min,x_max):
@@ -557,12 +557,12 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 
                 cid = self.idx_perm[self.idx]
                 for i in range(len(self.vars_in_patches_min)):
-                    #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
-                    if(self.vars_in[i] not in {"lsp_in", "cp_in", "tp"}): # not normalize
-                        x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
-                    else:
-                        x[jj][i] = self.vars_in_patches_list[cid][i]
-                    #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
+                    # if(self.vars_in[i] not in {"lsp_in", "cp_in", "tp"}): # not normalize
+                    #     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    # else:
+                    #     x[jj][i] = self.vars_in_patches_list[cid][i]
+                    # x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
 
                 # for i in range(len(self.vars_in_patches_min)):
                 #     if i not in self._prcp_indexes:
@@ -570,12 +570,12 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
                 
                 # data transformation based on leinnon 2023 paperf
-                #y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
-                #y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
-                y[jj] = self.vars_out_patches_list[cid]
-                y_orig[jj] = self.vars_out_orig_patches_list[cid]
-                #y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
-                #y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_avg) / self.vars_out_patches_std) 
+                # y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
+                # y[jj] = self.vars_out_patches_list[cid]
+                # y_orig[jj] = self.vars_out_orig_patches_list[cid]
+                # y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_avg) / self.vars_out_patches_std) 
                 t[jj] = self.times_patches_list[cid]
                 lats_lons_cid = cid%self.num_patches_img 
                 lons_cid = int(lats_lons_cid%self.n_patches_x)
@@ -592,7 +592,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
           
                 tops = torch.from_numpy(np.expand_dims(np.transpose(tops,(1,0)),0))
 
-                x_top[jj] = normalize(tops, -182, 3846) #  z-score
+                x_top[jj] = normalize(tops, 312.71216, 442.65375) #-182,3846
                 '''
                  array(312.71216, dtype=float32),avg
                 array(442.65375, dtype=float32)) std
