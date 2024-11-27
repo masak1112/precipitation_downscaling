@@ -266,11 +266,11 @@ class UNet_diff(nn.Module):
         output = self.output(d3)
         return output
 
-net = UNet_diff(n_channels = 1, img_size = 160)
+# net = UNet_diff(n_channels = 1, img_size = 160)
 
-x = torch.rand((24,1,160,160))
-top = torch.rand((24,1,160,160))
-time = torch.randint(0, 200, (24,)) 
-pred = net(x,time, top)
-print(pred.shape)
+# x = torch.rand((24,1,160,160))
+# top = torch.rand((24,1,160,160))
+# time = torch.randint(0, 200, (24,)) 
+# pred = net(x,time, top)
+# print(pred.shape)
 
