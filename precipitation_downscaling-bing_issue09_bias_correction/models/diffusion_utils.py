@@ -157,7 +157,7 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     # def p_sample_loop(self, shape, x_in=None, top=None):
-    def p_sample_loop(self, shape, x_in=None, top=None, save_dir=None, idx=None, time_steps=[1, 50, 100, 150, 200, 250, 300, 350, 400, 449]):
+    def p_sample_loop(self, shape, x_in=None, top=None, save_dir=None, idx=None, time_steps=[1, 50, 100, 150, 200, 249]):
        
         b = shape[0]
         img = torch.randn(shape, device = device)

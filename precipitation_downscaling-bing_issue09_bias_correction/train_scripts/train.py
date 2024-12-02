@@ -218,11 +218,11 @@ class BuildModel:
             self.hr = self.H
             h_shape = self.H.shape
 
-            t = torch.randint(0, 450, (h_shape[0],), device = device).long()
+            t = torch.randint(0, 250, (h_shape[0],), device = device).long()
    
             noise = torch.randn_like(self.hr)
           
-            gd = GaussianDiffusion(model = self.netG, timesteps = 450, conditional=self.conditional)
+            gd = GaussianDiffusion(model = self.netG, timesteps = 250, conditional=self.conditional)
             x_noisy = gd.q_sample(x_start = self.hr, t = t, noise=noise)
             # print("x_nosey shape", x_noisy.shape) #[16,1,160,160][batch_size,chanel,img,img]
 
@@ -236,7 +236,7 @@ class BuildModel:
                 with open(example_path,'wb') as f:
                     pickle.dump(examples, f)
 
-                for i in [1, 50, 100, 150, 200, 250, 300, 350, 400, 449]:
+                for i in [1, 50, 100, 150, 200, 249]:
                     j = [i] * h_shape[0]
                     #i = torch.range(1, 16*10, step=10, device = device).long()
                     noise_image = gd.q_sample(x_start = self.hr, t = torch.from_numpy(np.array(j)),noise=noise).detach().cpu().numpy()

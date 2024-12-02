@@ -241,7 +241,7 @@ class UNet_diff(nn.Module):
         self.up3 = Decode_Block(in_channels = channels_start*2 , out_channels = channels_start, time_emb_dim = time_dim)
 
         self.output = nn.Conv2d(channels_start, 1, kernel_size=1, bias=True)
-        torch.nn.init.xavier_uniform(self.output .weight)
+        torch.nn.init.xavier_uniform_(self.output.weight)
 
 
     def forward(self, x:Tensor,time: Tensor = torch.tensor(-1), topograhpy=None)->Tensor:
@@ -266,11 +266,11 @@ class UNet_diff(nn.Module):
         output = self.output(d3)
         return output
 
-# net = UNet_diff(n_channels = 1, img_size = 160)
+# net = UNet_diff(n_channels = 11, img_size = 160)
 
-# x = torch.rand((24,1,160,160))
+# x = torch.rand((24,11,160,160))
 # top = torch.rand((24,1,160,160))
-# time = torch.randint(0, 200, (24,)) 
+# time = torch.randint(0, 250, (24,)) 
 # pred = net(x,time, top)
 # print(pred.shape)
 
