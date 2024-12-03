@@ -142,7 +142,7 @@ def main():
                 input_temp = input_vars[:,-1,:,:].cpu().numpy()
                 input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_max- vars_in_patches_min)+ vars_in_patches_min).cpu().numpy()
                 # input_temp = ((np.squeeze(input_vars[:,-1,:,:]) )* (vars_in_patches_std) + vars_in_patches_avg).cpu().numpy()
-                input_temp = np.exp(input_temp+np.log(args.k))-args.k
+                # input_temp = np.exp(input_temp+np.log(args.k))-args.k
  
 
                 with torch.no_grad():
@@ -172,7 +172,7 @@ def main():
                 preds = preds * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 # preds = preds * (vars_out_patches_std) + vars_out_patches_avg
                 #log-transform -> log(x+k)-log(k)
-                preds =np.exp(preds+np.log(args.k))-args.k
+                # preds =np.exp(preds+np.log(args.k))-args.k
                 sample_first = samples[0].cpu().numpy()
 
                 sample_50 = samples[50].cpu().numpy()
@@ -189,14 +189,14 @@ def main():
                 #hr = model.hr.cpu().numpy()
                 hr = (model.hr.cpu().numpy())  * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min 
                 # hr = (model.hr.cpu().numpy()) * (vars_out_patches_std) + vars_out_patches_avg
-                hr = np.exp(hr+np.log(args.k))-args.k
+                # hr = np.exp(hr+np.log(args.k))-args.k
                 hr[hr<0] = 0
                 if np.any(hr.flatten() < 0, axis=0):
                     raise ValueError("There are negative values in HR data after de-transformation") 
                 
                 inter = model.L_inter.cpu().numpy() * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min 
                 # inter = model.L_inter.cpu().numpy() * (vars_in_patches_std) + vars_in_patches_avg
-                inter = np.exp(inter+np.log(args.k))-args.k
+                # inter = np.exp(inter+np.log(args.k))-args.k
                 inter[inter<0] = 0
                 if np.any(inter.flatten() < 0, axis=0):
                     raise ValueError("There are negative values in inter data after de-transformation") 

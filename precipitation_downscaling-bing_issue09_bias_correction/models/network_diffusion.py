@@ -225,7 +225,7 @@ class UNet_diff(nn.Module):
         
 
         """encoder """
-        self.down1 = Encoder_Block(in_channels = n_channels+1, out_channels = channels_start, time_emb_dim = time_dim)
+        self.down1 = Encoder_Block(in_channels = n_channels, out_channels = channels_start, time_emb_dim = time_dim)
         self.down2 = Encoder_Block(in_channels = channels_start, out_channels = channels_start*2, time_emb_dim = time_dim)
         self.down3 = Encoder_Block(in_channels = channels_start*2, out_channels = channels_start*4, time_emb_dim = time_dim)
 
@@ -248,8 +248,8 @@ class UNet_diff(nn.Module):
         
         t = self.time_mlp(time) if exists(self.time_mlp) else None
         # print("t in Unet is ",t)
-        top = nn.functional.interpolate(topograhpy, scale_factor=1)
-        x = torch.cat((x, top), 1)
+        # top = nn.functional.interpolate(topograhpy, scale_factor=1)
+        # x = torch.cat((x, top), 1)
 
         s1, e1 = self.down1(x, t)
         s2, e2 = self.down2(e1, t)
