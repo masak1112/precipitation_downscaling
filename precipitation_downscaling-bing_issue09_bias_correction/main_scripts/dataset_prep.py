@@ -345,13 +345,13 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         #         # else:
         #         #     pass
                 
-        # threshold = 0.01 
-        # ratio_threshold = 0.70  
+        # threshold = 0 
+        # ratio_threshold = 0.90  
         # for i in range(vars_out_patches.shape[0]):
         #     #remove Nan values and no rain images, or nan values in the input data
         #     if (not torch.isnan(vars_out_orig_patches[i]).any()) and torch.min(vars_in_patches[i][-1])>0 and torch.max(vars_out_orig_patches[i])>=torch.tensor(0.1).to(device):
-        #         if self.mode == "train":
-        #             low_value_ratio = (vars_out_orig_patches[i] < threshold).float().mean()
+        #         if self.mode == "train": 
+        #             low_value_ratio = (vars_out_orig_patches[i] <= threshold).float().mean()
         #             if low_value_ratio < ratio_threshold:
         #                 no_nan_idx.append(i)
         #         else:
@@ -368,12 +368,12 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         print("pre indexes are",self._prcp_indexes)
         
         # print("var_in_patches",vars_in_patches[:,6,:,:])
-        # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.tensor(self.k).to("cpu")) - torch.log(torch.tensor(self.k).to("cpu"))
+        vars_in_patches[:,self._prcp_indexes,:,:] = torch.log((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.tensor(self.k).to("cpu")) - torch.log(torch.tensor(self.k).to("cpu"))
         
         
-        # vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
+        vars_out_patches= torch.log(vars_out_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
         
-        # vars_out_orig_patches = torch.log(vars_out_orig_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
+        vars_out_orig_patches = torch.log(vars_out_orig_patches+torch.tensor(self.k).to("cpu"))-torch.log(torch.tensor(self.k).to("cpu"))
         # vars_in_patches[:,self._prcp_indexes,:,:] = torch.log10((vars_in_patches[:,self._prcp_indexes,:,:]) + torch.log(torch.tensor(self.k).to("cpu")))
         # vars_out_patches= torch.log10(vars_out_patches+ torch.log(torch.tensor(self.k).to("cpu")))
 
@@ -394,7 +394,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         #[no_nan_idx.append(i) for i in range(vars_out_patches.shape[0]) if (not torch.isnan(vars_out_patches[i]).any())]
        
         # Get the index if the zero values
-        #[no_zeros_idx.append(i) for i in range(vars_out_patches.shape[0]) if torch.count_nonzero(vars_out_patches[i]) > 10]  
+        #[no_zeros_idx.append(i) for i in range(vars_out_patches.shape[0]) if torch.count_nonzero(vars_out_patches[i]) > 10]  \
         # no_nan_idx = list(set(no_nan_idx+no_zeros_idx))
         print("no nan idx", len(no_nan_idx))
         #print("no_zeros_idx", no_zeros_idx)
@@ -419,15 +419,16 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         tp_min = torch.min(vars_in_patches[:, -1, :, :])
         tp_max = torch.max(vars_in_patches[:, -1, :, :])
 
-        print("Minimum value of tp in vars_in_patches(having log):", tp_min.item())
-        print("Maximum value of tp in vars_in_patches(having log):", tp_max.item())
+        print("Minimum value of tp in vars_in_patches:", tp_min.item())
+        print("Maximum value of tp in vars_in_patches:", tp_max.item())
 
         # Un-log the data for analysis
         tp_data = torch.exp(vars_in_patches[:, -1, :, :] + torch.log(torch.tensor(self.k).to("cpu"))) - self.k
+        # tp_data = vars_in_patches[:, -1, :, :]
 
         # Create histogram data using numpy
         tp_data_np = tp_data.cpu().numpy()
-        bins = [-0.1, 0.1, 2, 4, 8, 20, 30, np.inf]
+        bins = [-0.1, 0.001, 2, 4, 8, 20, 30, np.inf]
         counts, _ = np.histogram(tp_data_np, bins=bins)
         counts_tensor = torch.from_numpy(counts).float()
         total_counts = counts_tensor.sum().item()
@@ -439,6 +440,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         # Un-log the data for vars_out_orig_patches
         tp_data_out = torch.exp(vars_out_orig_patches + torch.log(torch.tensor(self.k).to("cpu"))) - self.k
+        # tp_data_out = vars_out_orig_patches
         tp_data_out_np = tp_data_out.cpu().numpy()  # Convert to numpy for histogram calculation
         counts_out, _ = np.histogram(tp_data_out_np, bins=bins)
         counts_out_tensor = torch.from_numpy(counts_out).float()
@@ -535,11 +537,12 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
         self.idx = 0
 
         #min-max score
-        def normalize(x, x_min,x_max):
+        def minmax_normalize(x, x_min,x_max):
             return ((x - x_min)/(x_max-x_min))
+            # return 2 * ((x - x_min) / (x_max - x_min)) - 1
 
-        # def normalize(x, avg,std):
-        #     return (x-avg)/std
+        def zscore_normalize(x, avg,std):
+            return (x-avg)/std
 
         
         # def normalize(x, x_min,x_max):
@@ -568,23 +571,37 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 cid = self.idx_perm[self.idx]
                 for i in range(len(self.vars_in_patches_min)):
                     # x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
-                    # if(self.vars_in[i] not in {"lsp_in", "cp_in", "tp"}): # not normalize
-                    #     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    if(self.vars_in[i] not in {"lsp_in", "cp_in", "tp"}): # not normalize
+                        x[jj][i] = minmax_normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    else:
+                        # x[jj][i] = self.vars_in_patches_list[cid][i]
+                        # x[jj][i] = 2 * normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i]) - 1
+                        x[jj][i] = (self.vars_in_patches_list[cid][i]) / self.vars_in_patches_max[i]
+                    # x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    # if(self.vars_in[i] in {"cape_in", "tclw_in", "tcwv_in", "tisr_in", "u700_in", "v700_in", "lsp_in", "cp_in", "tp"}): 
+                    #     x[jj][i] = (self.vars_in_patches_list[cid][i]) / self.vars_in_patches_max[i]
+                    # # elif(self.vars_in[i] in {"cape_in", "tclw_in", "tcwv_in", "tisr_in", "u700_in", "v700_in"}): 
+                    # #     x[jj][i] = minmax_normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
                     # else:
-                    #     x[jj][i] = self.vars_in_patches_list[cid][i]
-                    x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    #     x[jj][i] = zscore_normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
+                        # x[jj][i] = self.vars_in_patches_list[cid][i]
+                        # x[jj][i] = 2 * normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i]) - 1
 
                 # for i in range(len(self.vars_in_patches_min)):
                 #     if i not in self._prcp_indexes:
                 #          x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
 
-                
+                # vars_in = ["cape_in", "tclw_in", "sp_in", "tcwv_in", "lsp_in", "cp_in", "tisr_in","u700_in","v700_in","tp"]
                 # data transformation based on leinnon 2023 paperf
-                y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                y[jj] = (self.vars_out_patches_list[cid]) / self.vars_out_patches_max
+                # y[jj] = 2 * ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) - 1
+                # y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
                 # y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
                 # y[jj] = self.vars_out_patches_list[cid]
                 # y_orig[jj] = self.vars_out_orig_patches_list[cid]
-                y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                y_orig[jj] = (self.vars_out_orig_patches_list[cid]) / self.vars_out_patches_max
+                # y_orig[jj] = 2 * ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min))-1 
+                # y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
                 # y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_avg) / self.vars_out_patches_std) 
                 t[jj] = self.times_patches_list[cid]
                 lats_lons_cid = cid%self.num_patches_img 
@@ -602,8 +619,8 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
           
                 tops = torch.from_numpy(np.expand_dims(np.transpose(tops,(1,0)),0))
 
-                # x_top[jj] = normalize(tops, 312.71216, 442.65375) #-182,3846
-                x_top[jj] = normalize(tops, -182, 3846) 
+                x_top[jj] = zscore_normalize(tops, 312.71216, 442.65375) #-182,3846
+                # x_top[jj] = normalize(tops, -182, 3846) 
                 '''
                  array(312.71216, dtype=float32),avg
                 array(442.65375, dtype=float32)) std
