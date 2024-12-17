@@ -27,12 +27,112 @@ import os
 import json
 from datetime import datetime
 import xarray as xr
+from sklearn.linear_model import LinearRegression
 '''
 --test_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/test
 --save_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/zx_results/test1
 --stat_dir /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/downscaling_precipitation/precip_dataset_new/train
 --checkpoint /cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/zx_results/train1/41075_G.pth
 '''
+
+# def train_linear_model(pred, hr):
+
+#     pred_flat = pred.flatten().reshape(-1, 1)
+#     hr_flat = hr.flatten()
+    
+#     # 使用线性回归拟合 a 和 b
+#     reg = LinearRegression()
+#     reg.fit(pred_flat, hr_flat)
+#     a, b = reg.coef_[0], reg.intercept_
+#     print(f"Fitted linear model: y = {a:.4f}x + {b:.4f}")
+#     return a, b
+
+# def apply_correction(pred, a, b):
+
+#     return a * pred + b
+
+# def linear_pixel_adjustment(pred, hr):
+#     """
+#     Apply pixel-wise linear correction y = ax + b to align pred (prediction) with hr (ground truth).
+
+#     Args:
+#         pred (numpy.ndarray): Predicted precipitation values, shape (time, lat, lon).
+#         hr (numpy.ndarray): Ground truth precipitation values, shape (time, lat, lon).
+
+#     Returns:
+#         corrected_pred (numpy.ndarray): Corrected prediction values, same shape as pred.
+#     """
+#     corrected_pred = np.zeros_like(pred)  # Initialize corrected predictions
+#     time, lat, lon = pred.shape
+
+#     for i in range(lat):
+#         for j in range(lon):
+#             x = pred[:, i, j]  # Prediction values at pixel (i, j)
+#             y = hr[:, i, j]    # Ground truth values at pixel (i, j)
+
+#             if np.all(y == 0) or np.all(x == 0):  # Skip pixels with no data
+#                 corrected_pred[:, i, j] = x
+#                 continue
+
+#             x_mean = np.mean(x)
+#             y_mean = np.mean(y)
+#             cov_xy = np.mean((x - x_mean) * (y - y_mean))
+#             var_x = np.mean((x - x_mean) ** 2)
+
+#             if var_x == 0:  # Avoid division by zero
+#                 a = 0
+#                 b = y_mean
+#             else:
+#                 a = cov_xy / var_x
+#                 b = y_mean - a * x_mean
+            
+
+#             # Apply linear correction: y = ax + b
+#             corrected_pred[:, i, j] = a * x + b
+#             corrected_pred[:, i, j] = np.maximum(corrected_pred[:, i, j], 0)  # Ensure non-negative values
+
+#     return corrected_pred
+
+# def time_based_adjustment(pred, hr):
+#     """
+#     按时间步校正降雨预测数据，y = ax + b。
+    
+#     Args:
+#         pred (numpy.ndarray): 预测值，形状 (time, lat, lon)。
+#         hr (numpy.ndarray): 真实值，形状 (time, lat, lon)。
+    
+#     Returns:
+#         corrected_pred (numpy.ndarray): 校正后的预测值，形状与 pred 相同。
+#     """
+#     corrected_pred = np.zeros_like(pred)  # 初始化校正后的预测值
+#     time_steps = pred.shape[0]  # 时间维度长度
+
+#     for t in range(time_steps):
+#         pred_t = pred[t, :, :].flatten()
+#         hr_t = hr[t, :, :].flatten()
+
+#         valid_idx = ~np.isnan(pred_t) & ~np.isnan(hr_t)
+#         pred_t, hr_t = pred_t[valid_idx], hr_t[valid_idx]
+
+#         if len(pred_t) == 0 or len(hr_t) == 0:
+#             # 如果没有有效值，跳过校正
+#             corrected_pred[t, :, :] = pred[t, :, :]
+#             continue
+
+#         # 拟合线性模型 y = ax + b
+#         reg = LinearRegression()
+#         reg.fit(pred_t.reshape(-1, 1), hr_t)
+#         a, b = reg.coef_[0], reg.intercept_
+
+#         print(f"Time step {t}: Fitted model y = {a:.4f}x + {b:.4f}")
+
+#         # 应用校正 y = ax + b
+#         corrected_t = a * pred[t, :, :] + b
+#         corrected_t = np.maximum(corrected_t, 0)  # 确保非负值
+#         corrected_pred[t, :, :] = corrected_t
+
+#     return corrected_pred
+
 
 def main():
  
@@ -239,7 +339,34 @@ def main():
         inter_list = np.concatenate(inter_list,0)
         hr_list = np.concatenate(hr_list,0)
 
-                
+    #  # **后处理：全局比例校正**
+    #     pred_sum = np.sum(pred)
+    #     hr_sum = np.sum(hr_list)
+    #     if pred_sum > 0:  
+    #         scaling_factor = hr_sum / pred_sum
+    #         pred *= scaling_factor
+    #         print(f"Applied scaling factor: {scaling_factor}")
+
+        # # **后处理：线性校正**
+        # a, b = train_linear_model(pred, hr_list)
+        # pred = apply_correction(pred, a, b)
+        
+        # if len(pred.shape) == 4:
+        #     pred = pred[:, 0 , : ,:]
+        #     pred_50 = pred_50[:, 0 , : ,:]
+        #     pred_100 = pred_100[:, 0 , : ,:]
+        #     pred_150 = pred_150[:, 0 , : ,:]
+        #     pred_first = pred_first[:, 0 , : ,:]
+        #     pred_last = pred_last[:, 0 , : ,:]
+        # if len(hr_list.shape) == 4:
+        #     hr_list = hr_list[:, 0,: ,:]
+
+        # # **后处理：pixel的线性校正**
+        # pred = linear_pixel_adjustment(pred, hr_list)
+
+        # # **后处理：按time的线性校正**
+        # pred = time_based_adjustment(pred, hr_list)
+
         datetimes = []
         for i in range(times.shape[0]):
             times_str = str(times[i][0])+str(times[i][1]).zfill(2)+str(times[i][2]).zfill(2)+str(times[i][3]).zfill(2)
