@@ -151,7 +151,7 @@ def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom
                                dataset_type=dataset_type)
     else:
         #default parameters for other models (except WGAN)
-        hparams = {"G_lossfn_type": "weight_MAE",
+        hparams = {"G_lossfn_type": "l1",
                    "G_optimizer_type": "adam",
                    "G_optimizer_lr": 3.e-05,
                   "G_optimizer_betas":[0.9, 0.999],
