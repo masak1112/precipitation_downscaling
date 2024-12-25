@@ -322,7 +322,7 @@ class BuildModel:
         self.init_train()
         current_step = self.iteration 
         min_val_loss = float('inf')
-        patience = 100
+        patience = 140
         trigger_times = 0 
         for epoch in range(self.epochs):
             for i, train_data in enumerate(self.train_loader):
