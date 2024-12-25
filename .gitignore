@@ -11,3 +11,5 @@
 /precipitation_downscaling-bing_issue09_bias_correction/models/__pycache__
 /precipitation_downscaling-bing_issue09_bias_correction/train_scripts/__pycache__
 /precipitation_downscaling-bing_issue09_bias_correction/utils/__pycache__
+/precipitation_downscaling-bing_issue09_bias_correction/FSS_Plots
+/precipitation_downscaling-bing_issue09_bias_correction/RMSE_Plots
