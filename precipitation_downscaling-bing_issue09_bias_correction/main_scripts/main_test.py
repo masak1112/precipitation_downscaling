@@ -65,7 +65,7 @@ def main():
     netG, _ = get_model(args.model_type, args.dataset_type, img_size, n_channels, upscale)
 
     #default parameters
-    hparams =  {"G_lossfn_type": "weight_MAE",
+    hparams =  {"G_lossfn_type": "l1",
               "G_optimizer_type": "adam",
                "G_optimizer_lr": 5.e-04,
                 "G_optimizer_betas":[0.9, 0.999],
@@ -89,10 +89,10 @@ def main():
     with open(stat_file,'r') as f:
         stat_data = json.load(f)
 
-    # vars_in_patches_min = stat_data['tp_min']
-    # vars_in_patches_max  = stat_data['tp_max']
-    # vars_in_patches_avg = stat_data['tp_avg']
-    # vars_in_patches_std  = stat_data['tp_std']
+    vars_in_patches_min = stat_data['tp_min']
+    vars_in_patches_max  = stat_data['tp_max']
+    vars_in_patches_avg = stat_data['tp_avg']
+    vars_in_patches_std  = stat_data['tp_std']
     vars_out_patches_min = stat_data['yw_hourly_tar_min']
     vars_out_patches_max  = stat_data['yw_hourly_tar_max']
     vars_out_patches_avg = stat_data['yw_hourly_tar_avg']
