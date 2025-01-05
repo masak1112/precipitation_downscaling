@@ -3,7 +3,6 @@ __email__ = "b.gong@fz-juelich.de"
 __author__ = "Bing Gong"
 __date__ = "2022-12-08"
 
-
 import time
 from collections import OrderedDict
 from torch.optim import Adam
@@ -203,8 +202,7 @@ class BuildModel:
     # ----------------------------------------
     # feed L to netG
     # ----------------------------------------
-    def netG_forward(self,idx=None):
-
+    def netG_forward(self,idx=None, mode = "train"):
         if not self.diffusion:
             self.E = self.netG(self.L, self.top) #[:,0,:,:]
             #print("The prediction shape (E):", self.E.cpu().numpy().shape)
@@ -228,23 +226,24 @@ class BuildModel:
 
             noise_samples_dir = os.path.join(self.save_dir, 'noise_samples')
             os.makedirs(noise_samples_dir, exist_ok=True)  
+            
+            if mode == "train":    
+                #save noise images
+                if idx >= 0 and idx < 3:
+                    examples = [self.hr.detach().cpu().numpy()]
+                    example_path = os.path.join(noise_samples_dir, f'example_idx_{idx}_t_0.pkl')
+                    with open(example_path,'wb') as f:
+                        pickle.dump(examples, f)
 
-            #save noise images
-            if idx >= 0 and idx < 3:
-                examples = [self.hr.detach().cpu().numpy()]
-                example_path = os.path.join(noise_samples_dir, f'example_5132_idx_{idx}_t_0.pkl')
-                with open(example_path,'wb') as f:
-                    pickle.dump(examples, f)
-
-                for i in [1, 50, 100, 150, 200, 249]:
-                    j = [i] * h_shape[0]
-                    #i = torch.range(1, 16*10, step=10, device = device).long()
-                    noise_image = gd.q_sample(x_start = self.hr, t = torch.from_numpy(np.array(j)),noise=noise).detach().cpu().numpy()
-                    noise_image_path = os.path.join(noise_samples_dir, f'example_5132_idx_{idx}_t_{i}.pkl')
-                    #dtype=torch.int, device=device
-                    #examples.append(noise_image)
-                    with open(noise_image_path,'wb') as f:
-                        pickle.dump(noise_image, f)
+                    for i in [1, 50, 100, 150, 200, 249]:
+                        j = [i] * h_shape[0]
+                        #i = torch.range(1, 16*10, step=10, device = device).long()
+                        noise_image = gd.q_sample(x_start = self.hr, t = torch.from_numpy(np.array(j)),noise=noise).detach().cpu().numpy()
+                        noise_image_path = os.path.join(noise_samples_dir, f'example_5132_idx_{idx}_t_{i}.pkl')
+                        #dtype=torch.int, device=device
+                        #examples.append(noise_image)
+                        with open(noise_image_path,'wb') as f:
+                            pickle.dump(noise_image, f)
                             
             self.E = self.netG(torch.cat([self.L, x_noisy], dim = 1), t, self.top)
 
@@ -348,7 +347,7 @@ class BuildModel:
                 # -------------------------------
                 # 3) optimize parameters
                 # -------------------------------
-                self.optimize_parameters(i,current_step)
+                self.optimize_parameters(i, current_step)
                 print("Model Loss {} after step {}".format(self.G_loss, current_step))
                 #print("E data",self.E.shape)
                 # -------------------------------
@@ -386,7 +385,7 @@ class BuildModel:
         with torch.no_grad():
             for j, val_data in enumerate(self.val_loader):
                 self.feed_data(val_data)
-                self.netG_forward(idx=-1)
+                self.netG_forward(idx=j,mode="val")
                 val_loss += self.G_lossfn(self.E, self.H).item()
                 count += 1
         self.netG.train()
