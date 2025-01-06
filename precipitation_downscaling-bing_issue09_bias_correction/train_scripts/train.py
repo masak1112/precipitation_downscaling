@@ -33,7 +33,7 @@ class Weight_Loss(nn.Module):
         super(Weight_Loss, self).__init__()
     def init_w(self,y_true):
         weights = torch.tensor(y_true,requires_grad=False) # 
-        thresholds = torch.tensor(np.log(1 + np.array([1.2, 4.2, 8])/0.008), dtype=weights.dtype, requires_grad=False) #1.5 5 10
+        thresholds = torch.tensor(np.log(1 + np.array([1.2, 4.2, 8])/4), dtype=weights.dtype, requires_grad=False) #1.5 5 10
         weights[y_true < thresholds[0]] = 1
         weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 10 #10 #8 #6 #3.5 #2
         weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 80 #80 #50 #20 #15 #6 #3
