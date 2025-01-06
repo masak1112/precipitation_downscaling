@@ -289,15 +289,15 @@ def main():
                     input_temp = input_vars.cpu().numpy()
                     # input_temp = np.squeeze(input_vars[:,-1,:,:])
                     # input_temp = input_temp.cpu().numpy()
-                    #input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max - vars_in_patches_min )+ vars_in_patches_min 
-                    input_temp = np.squeeze(input_vars[:,-1,:,:])  #* (vars_in_patches_std )+ vars_in_patches_avg 
+                    input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max - vars_in_patches_min )+ vars_in_patches_min 
+                    # input_temp = np.squeeze(input_vars[:,-1,:,:])  #* (vars_in_patches_std )+ vars_in_patches_avg 
                     input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
  
                     model.netG_forward(i)
                     #Get the prediction values
                     # preds = model.E.cpu().numpy()
-                    #preds = model.E.cpu().numpy() * (vars_in_patches_max - vars_in_patches_min) + vars_in_patches_min
-                    preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
+                    preds = model.E.cpu().numpy() * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min
+                    # preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
                     preds = np.exp(preds+np.log(args.k))-args.k
                     preds[preds<0] = 0
                     preds[preds>55] = 55
@@ -306,7 +306,7 @@ def main():
                     if np.any(preds.flatten() > 55):
                         raise ValueError("There are values greater than 55 in preds data after de-transformation") 
 
-                    inter = model.L_inter.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
+                    inter = model.L_inter.cpu().numpy() * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min
                     inter = np.exp(inter+np.log(args.k))-args.k
                     inter[inter<0] = 0
                     if np.any(inter.flatten() < 0, axis=0):
@@ -315,16 +315,16 @@ def main():
                     #Get the groud truth values
                     # hr = test_data["H"].cpu().numpy()
                     # H : target
-                    #hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                    hr = test_data["H"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
+                    hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    # hr = test_data["H"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
                     hr = np.exp(hr+np.log(args.k))-args.k
                     hr[hr<0] = 0
                     if np.any(hr.flatten() < 0, axis=0):
                         raise ValueError("There are negative values in HR data after de-transformation") 
 
                     # hr_orig =  test_data["H_orig"].cpu().numpy()
-                    #hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
-                    hr_orig =  test_data["H_orig"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
+                    hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    # hr_orig =  test_data["H_orig"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
                     hr_orig = np.exp(hr_orig+np.log(args.k ))-args.k 
                     hr_orig[hr_orig<0] = 0
                     if np.any(hr_orig.flatten() < 0, axis=0):
