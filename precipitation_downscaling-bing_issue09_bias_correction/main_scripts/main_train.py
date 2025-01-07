@@ -30,6 +30,7 @@ from models.network_critic import Discriminator as critic
 from utils.data_loader import create_loader
 from train_scripts.wgan_train import BuildWGANModel
 from train_scripts.train import BuildModel
+from models.network_attention_unet import AttentionUNet
 #from flopth import flopth
 from ptflops import get_model_complexity_info
 ###Weights and Bias
@@ -38,7 +39,7 @@ os.environ["WANDB_MODE"]="offline"
 ##os.environ["WANDB_API_KEY"] = key
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-available_models = ["unet", "wgan", "diffusion", "swinIR","swinUnet","diffusion2","fc"]
+available_models = ["unet", "wgan", "diffusion", "swinIR","swinUnet","diffusion2","fc", "attention_unet"]
 
 def run(train_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/train",
         val_dir: str = "/p/scratch/deepacf/deeprain/bing/downscaling_maelstrom/val",

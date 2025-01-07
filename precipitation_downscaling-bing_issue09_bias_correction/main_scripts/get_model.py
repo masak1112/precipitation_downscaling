@@ -6,10 +6,7 @@
 __email__ = "b.gong@fz-juelich.de"
 __author__ = "Bing Gong"
 __date__ = "2023-07-12"
-
-
 import sys
-sys.path.append('/cpfs01/projects-HDD/cfff-4a8d9af84f66_HDD/public/ShiXiSheng/yzy/precipitation_downscaling-bing_issue09_bias_correction')
 from models.network_unet import UNet as unet
 from models.network_swinir import SwinIR as swinIR
 from models.network_vit import TransformerSR as vitSR
@@ -18,13 +15,14 @@ from models.network_diffusion  import UNet_diff
 from models.diffusion_utils import GaussianDiffusion
 from models.network_critic import Discriminator as critic
 from models.network_fc import FCnet
+from models.network_attention_unet import AttentionUNet
 # from models.network_unet2 import UNetModel
 
 
 def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
     netC = None
     # Define the models
-    if type_net == "unet":
+    if type_net == "unet" or type_net == "attention_unet":
         netG = unet(n_channels = n_channels,dataset_type=dataset_type)
     elif type_net == "fc":
         netG = FCnet(n_channels = n_channels,)
@@ -39,6 +37,7 @@ def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
     
     elif type_net.lower()  == "vitsr":
         netG = vitSR(embed_dim =768)
+     
 
     elif type_net == "swinunet":
         netG = swinUnet(img_size=img_size, 
@@ -63,6 +62,7 @@ def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
         # add one channel for the noise
         netG = UNet_diff(img_size=img_size[0],
                          n_channels=n_channels+1)
+                        
     # elif type_net == "diffusion2":
     #     netG = UNetModel(image_size = img_size[0],
     #         in_channels=n_channels+1,
