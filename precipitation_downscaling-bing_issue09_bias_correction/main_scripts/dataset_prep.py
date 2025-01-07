@@ -558,11 +558,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
                 cid = self.idx_perm[self.idx]
                 for i in range(len(self.vars_in_patches_min)):
                     #x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_avg[i],self.vars_in_patches_std[i])
-                    if(self.vars_in[i] not in {"lsp_in", "cp_in", "tp"}): # not normalize
-                        x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
-                    else:
-                        x[jj][i] = self.vars_in_patches_list[cid][i]
-                    # x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    # if(self.vars_in[i] not in {"lsp_in", "cp_in", "tp"}): # not normalize
+                    #     x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
+                    # else:
+                    #     x[jj][i] = self.vars_in_patches_list[cid][i]
+                    x[jj][i] = normalize(self.vars_in_patches_list[cid][i],self.vars_in_patches_min[i],self.vars_in_patches_max[i])
 
                 # for i in range(len(self.vars_in_patches_min)):
                 #     if i not in self._prcp_indexes:
@@ -570,11 +570,11 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
                 
                 # data transformation based on leinnon 2023 paperf
-                # y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                y[jj] = ((self.vars_out_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
                 #y[jj] = (self.vars_out_patches_list[cid] - self.vars_out_patches_avg) / (self.vars_out_patches_std) 
-                y[jj] = self.vars_out_patches_list[cid]
-                y_orig[jj] = self.vars_out_orig_patches_list[cid]
-                # y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
+                # y[jj] = self.vars_out_patches_list[cid]
+                # y_orig[jj] = self.vars_out_orig_patches_list[cid]
+                y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_min) / (self.vars_out_patches_max- self.vars_out_patches_min)) 
                 #y_orig[jj] = ((self.vars_out_orig_patches_list[cid] - self.vars_out_patches_avg) / self.vars_out_patches_std) 
                 t[jj] = self.times_patches_list[cid]
                 lats_lons_cid = cid%self.num_patches_img 

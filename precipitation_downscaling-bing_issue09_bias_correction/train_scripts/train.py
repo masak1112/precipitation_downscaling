@@ -28,20 +28,46 @@ cuda = True if torch.cuda.is_available() else False
 #Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 pname = "./logs/profile"
 
+# class Weight_Loss(nn.Module):
+#     def __init__(self):
+#         super(Weight_Loss, self).__init__()
+#     def init_w(self,y_true):
+#         weights = torch.tensor(y_true,requires_grad=False) # 
+#         thresholds = torch.tensor(np.log(1 + np.array([1.2, 4.2, 8])/4), dtype=weights.dtype, requires_grad=False) #1.5 5 10
+#         weights[y_true < thresholds[0]] = 1
+#         weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 10 #10 #8 #6 #3.5 #2
+#         weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 80 #80 #50 #20 #15 #6 #3
+#         weights[y_true >= thresholds[2]] = 150 #150 #100 #60 #50 #12 #8
+#         return weights.to('cuda') 
+#     def forward(self, pred, target):
+#         error = torch.abs(pred - target)  # L1
+#         #error = torch.pow(error, 2)  # L2
+#         w = self.init_w(target)
+#         return torch.mean(w * error)
+
+
 class Weight_Loss(nn.Module):
-    def __init__(self):
+    def __init__(self, tar_min=0.0, tar_max=1.4277422428131104):
         super(Weight_Loss, self).__init__()
-    def init_w(self,y_true):
-        weights = torch.tensor(y_true,requires_grad=False) # 
-        thresholds = torch.tensor(np.log(1 + np.array([1.2, 4.2, 8])/4), dtype=weights.dtype, requires_grad=False) #1.5 5 10
+        self.tar_min = tar_min
+        self.tar_max = tar_max
+
+    def init_w(self, y_true):
+        raw_thresholds = np.log(1 + np.array([1.2, 4.2, 8])/4)  # 1.5 5 10
+        thresholds = (raw_thresholds - self.tar_min) / (self.tar_max - self.tar_min)
+        thresholds = torch.tensor(thresholds, dtype=y_true.dtype, requires_grad=False)
+        
+        weights = torch.ones_like(y_true, requires_grad=False)
         weights[y_true < thresholds[0]] = 1
-        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 10 #10 #8 #6 #3.5 #2
-        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 80 #80 #50 #20 #15 #6 #3
-        weights[y_true >= thresholds[2]] = 150 #150 #100 #60 #50 #12 #8
-        return weights.to('cuda') 
+        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 10
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 80
+        weights[y_true >= thresholds[2]] = 150
+
+        return weights.to('cuda')  
+
     def forward(self, pred, target):
-        error = torch.abs(pred - target)  # L1
-        #error = torch.pow(error, 2)  # L2
+        error = torch.abs(pred - target) 
+        # error = torch.pow(error, 2)  
         w = self.init_w(target)
         return torch.mean(w * error)
 
