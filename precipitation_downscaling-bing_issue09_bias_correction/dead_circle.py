@@ -11,25 +11,25 @@ def is_gpu_busy(threshold=30):
         pynvml.nvmlInit()
         handle = pynvml.nvmlDeviceGetHandleByIndex(0)  # 默认使用第一个GPU
         gpu_util = pynvml.nvmlDeviceGetUtilizationRates(handle).gpu
-        print(f"当前GPU使用率: {gpu_util}%")
+        # print(f"当前GPU使用率: {gpu_util}%")
         return gpu_util > threshold
     except ModuleNotFoundError:
-        print("pynvml 未安装，跳过GPU利用率检测。")
+        # print("pynvml 未安装，跳过GPU利用率检测。")
         return False
     except Exception as e:
-        print(f"GPU检测异常: {str(e)}")
+        # print(f"GPU检测异常: {str(e)}")
         return False
 
 # 检查CPU使用情况
 def is_cpu_busy(threshold=50):
     cpu_usage = psutil.cpu_percent(interval=1)
-    print(f"当前CPU使用率: {cpu_usage}%")
+    # print(f"当前CPU使用率: {cpu_usage}%")
     return cpu_usage > threshold
 
 # 检查内存使用情况
 def is_memory_busy(threshold=70):
     memory = psutil.virtual_memory()
-    print(f"当前内存使用率: {memory.percent}%")
+    # print(f"当前内存使用率: {memory.percent}%")
     return memory.percent > threshold
 
 # 占用 CPU 线程
@@ -54,7 +54,7 @@ def allocate_memory(size_mb):
 def keep_gpu_busy(device="cuda:0"):
     if torch.cuda.is_available():
         matrices = [torch.randn(20000, 20000, device=device) for _ in range(3)]  # 创建3个大矩阵，每个约3.2GB显存
-        print(f"在 {device} 上分配了3个20000x20000的矩阵，占用约{len(matrices)*3.2:.1f}GB显存")
+        # print(f"在 {device} 上分配了3个20000x20000的矩阵，占用约{len(matrices)*3.2:.1f}GB显存")
 
         while True:
             if not is_gpu_busy():
@@ -62,7 +62,7 @@ def keep_gpu_busy(device="cuda:0"):
                     matrices = [x @ x for x in matrices]  
                     torch.cuda.synchronize()
             else:
-                print("GPU忙碌，暂停2秒")
+                # print("GPU忙碌，暂停2秒")
                 time.sleep(2)
     else:
         print("未检测到GPU，跳过GPU占用部分。")
