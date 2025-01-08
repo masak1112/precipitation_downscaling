@@ -22,8 +22,10 @@ from models.network_attention_unet import AttentionUNet
 def get_model(type_net, dataset_type, img_size, n_channels, upscale, **kwargs):
     netC = None
     # Define the models
-    if type_net == "unet" or type_net == "attention_unet":
+    if type_net == "unet" :
         netG = unet(n_channels = n_channels,dataset_type=dataset_type)
+    elif type_net == "attention_unet":
+        netG = AttentionUNet(n_channels = n_channels,dataset_type=dataset_type)
     elif type_net == "fc":
         netG = FCnet(n_channels = n_channels,)
     elif type_net == "swinir":
