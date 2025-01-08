@@ -417,7 +417,7 @@ class PrecipDatasetInter(torch.utils.data.IterableDataset):
 
         # Create histogram data using numpy
         tp_data_np = tp_data.cpu().numpy()
-        bins = [-0.1, 0.1, 2, 4, 8, 20, 30, np.inf]
+        bins = [-0.1, 0.1, 1.5, 5, 7.5, 15, 20, np.inf]
         counts, _ = np.histogram(tp_data_np, bins=bins)
         counts_tensor = torch.from_numpy(counts).float()
         total_counts = counts_tensor.sum().item()

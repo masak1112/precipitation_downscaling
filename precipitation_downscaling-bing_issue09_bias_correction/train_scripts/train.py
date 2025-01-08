@@ -53,15 +53,15 @@ class Weight_Loss(nn.Module):
         self.tar_max = tar_max
 
     def init_w(self, y_true):
-        raw_thresholds = np.log(1 + np.array([1.2, 4.2, 8])/10)  # 1.5 5 10
+        raw_thresholds = np.log(1 + np.array([1.5, 7.5, 15])/10)  # 1.5 5 10
         thresholds = (raw_thresholds - self.tar_min) / (self.tar_max - self.tar_min)
         thresholds = torch.tensor(thresholds, dtype=y_true.dtype, requires_grad=False)
         
         weights = torch.ones_like(y_true, requires_grad=False)
         weights[y_true < thresholds[0]] = 1
-        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 10
-        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 80
-        weights[y_true >= thresholds[2]] = 150
+        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 6
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 30
+        weights[y_true >= thresholds[2]] = 80
 
         return weights.to('cuda')  
 
