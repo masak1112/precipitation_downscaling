@@ -42,16 +42,41 @@ import matplotlib.pyplot as plt
 #         #error = torch.pow(error, 2)  # L2
 #         w = self.init_w(target)
 #         return torch.mean(w * error)
-    
-# def recon_loss(real_data, gen_data):
-#     weighted_loss = Weight_Loss()
-#     return weighted_loss(gen_data, real_data)
+
+class Weight_Loss(nn.Module):
+    def __init__(self, tar_min=0.0, tar_max=1.4277422428131104):
+        super(Weight_Loss, self).__init__()
+        self.tar_min = tar_min
+        self.tar_max = tar_max
+
+    def init_w(self, y_true):
+        raw_thresholds = np.log(1 + np.array([1.5, 7.5, 15])/10)  # 1.5 5 10
+        thresholds = (raw_thresholds - self.tar_min) / (self.tar_max - self.tar_min)
+        thresholds = torch.tensor(thresholds, dtype=y_true.dtype, requires_grad=False)
+        
+        weights = torch.ones_like(y_true, requires_grad=False)
+        weights[y_true < thresholds[0]] = 1.5
+        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 6
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 60
+        weights[y_true >= thresholds[2]] = 120
+
+        return weights.to('cuda')  
+
+    def forward(self, pred, target):
+        error = torch.abs(pred - target) 
+        # error = torch.pow(error, 2)  
+        w = self.init_w(target)
+        return torch.mean(w * error)
 
 def recon_loss(real_data, gen_data):
-    # initialize reconstruction loss
-    b_loss = torch.mean(torch.abs(gen_data - real_data))
-    rloss = torch.abs(gen_data - real_data).mean()
-    return rloss
+    weighted_loss = Weight_Loss()
+    return weighted_loss(gen_data, real_data)
+
+# def recon_loss(real_data, gen_data):
+#     # initialize reconstruction loss
+#     b_loss = torch.mean(torch.abs(gen_data - real_data))
+#     rloss = torch.abs(gen_data - real_data).mean()
+#     return rloss
 
 
 def get_lr_decay(hparams: dict = None):
