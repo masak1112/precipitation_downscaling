@@ -200,7 +200,7 @@ class AttentionBlock(nn.Module):
         #Getting gateing signal to the same number of filters as the iter_shape
         self.w_g = nn.Sequential(
                                 nn.Conv2d(f_g, f_int,
-                                         kernel_size=1, stride=2,
+                                         kernel_size=1, stride=1,
                                          padding=0, bias=True),
                                 nn.BatchNorm2d(f_int)
         )
@@ -220,20 +220,19 @@ class AttentionBlock(nn.Module):
                                 nn.BatchNorm2d(1),
                                 nn.Sigmoid(),
         )
-        
+        self.upsampling = nn.Upsample(scale_factor = 2, mode = "bilinear", align_corners = True)
         self.relu = nn.ReLU(inplace=True)
-
+   
     
 
     def forward(self, g, x):
         g1 = self.w_g(g)
         x1 = self.w_x(x)
-        
         #Concatenate and apply relu function
         psi = self.relu(g1+x1)
         psi = self.psi(psi)
-
-        return psi*x
+        x = psi*x
+        return x
 
 
 class AttentionUNet(nn.Module):
@@ -257,11 +256,14 @@ class AttentionUNet(nn.Module):
         """decoder """
         # +++32
         self.up1 = Decode_Block(channels_start * 8, channels_start * 4)
-        self.att1 = AttentionBlock(f_g=channels_start *  4, f_l=channels_start * 8, f_int=channels_start * 2)
+        self.att1 = AttentionBlock(f_g=channels_start * 4, f_l=channels_start * 4, f_int=channels_start * 2)
+        self.conv1 = Conv_Block(channels_start * 8, channels_start * 4)
         self.up2 = Decode_Block(channels_start * 4, channels_start * 2)
-        self.att2 = AttentionBlock(f_g=channels_start * 2, f_l=channels_start * 4, f_int=channels_start * 1)
+        self.att2 = AttentionBlock(f_g=channels_start * 2, f_l=channels_start * 2, f_int=channels_start * 1)
+        self.conv2 = Conv_Block(channels_start * 4, channels_start * 2)
         self.up3 = Decode_Block(channels_start * 2, channels_start)
-        self.att3 = AttentionBlock(f_g=channels_start , f_l=channels_start * 2 , f_int=channels_start )
+        self.att3 = AttentionBlock(f_g=channels_start , f_l=channels_start , f_int=channels_start )
+        self.conv3 = Conv_Block(channels_start * 2, channels_start)
         self.output = nn.Conv2d(channels_start, 1, kernel_size=1, bias=True)
         torch.nn.init.xavier_uniform(self.output.weight)
 
@@ -279,14 +281,14 @@ class AttentionUNet(nn.Module):
         # print("x shape:",x.shape)
 
         s1, e1 = self.down1(x)
-        print("e1 shape:", e1.shape)
-        print("s1 shape:", s1.shape)
+        #print("e1 shape:", e1.shape) #([24, 56, 80, 80])
+        #print("s1 shape:", s1.shape) # ([24, 56, 160, 160])
         s2, e2 = self.down2(e1)
-        print("s2 shape:", e2.shape)
-        print("e2 shape:", s2.shape)
+        #print("s2 shape:", e2.shape) #([24, 112, 40, 40])
+        #print("e2 shape:", s2.shape) # ([24, 112, 80, 80])
         s3, e3 = self.down3(e2)
-        print("e3 shape:", e3.shape)
-        print("s3 shape:", s3.shape)
+        #print("e3 shape:", e3.shape)  #([24, 224, 20, 20])
+        #print("s3 shape:", s3.shape) #[24, 224, 40, 40])
         x4 = self.b1(e3)  # -1,448,2,2
         # print("x4 shape:", x4.shape)
         # top = self.top(topography) # -1,32,2,2
@@ -296,25 +298,32 @@ class AttentionUNet(nn.Module):
         # x5 = torch.cat((x4, top), 1) #-1，480， 20，20
         # print("x5 shape:",x5.shape)
         # remove top
-        x5 = x4
-        d3 = self.up1(x5, s3)
-        print("d3 shape",d3.shape)
-        print("x5 shape",x5.shape)
-
-        x3 = self.att1(g=d3, x=x5)
-        d3 = torch.concat((x3, d3), dim=1)
+        x5 = x4 # ([24, 448, 20, 20])
+        d3 = self.up1(x5, s3) #[24, 224, 40, 40]) 
+        #print("x5 shape",x5.shape)  
+ 
+        x3 = self.att1(g=d3, x=s3) # ([24, 448, 20, 20])
+        #print("x3 shape",x3.shape)    
+        d3 = torch.concat((x3, d3), dim=1)  
+        #print("d3 shape",d3.shape) # ([24, 448, 40, 40])
+        d3 = self.conv1(d3) # ([24, 224, 40, 40])
+        #print("d3 after conv shape",d3.shape)
         
         # print("d1 shape:", d1.shape)
-        d2 = self.up2(d3, s2)
-        x2 = self.att2(g=d2, x=x3)
-        #d2 = torch.concat((x2, d2), dim=1)
+        d2 = self.up2(d3, s2) 
+        #print("d2  shape",d2.shape) #[24, 112, 80, 80]
+        x2 = self.att2(g=d2, x=s2)  
+        d2 = torch.concat((x2, d2), dim=1)
+        d2 = self.conv2(d2)
 
         # print("d2 shape:", d2.shape)
         d1 = self.up3(d2, s1)
-        x1 = self.att3(g=d1, x=x2)
-        d3 = torch.concat((x2, d2), dim=1)        
-    
-        output = self.output(d3) 
+        x1 = self.att3(g=d1, x=s1)
+        d1 = torch.concat((x1, d1), dim=1)   
+        d1 = self.conv3(d1) #24, 56, 160, 160
+        #print("d1 shape",d1.shape)
+
+        output = self.output(d1) 
         return output
 
 
