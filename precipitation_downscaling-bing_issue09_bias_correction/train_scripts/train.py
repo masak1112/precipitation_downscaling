@@ -58,10 +58,10 @@ class Weight_Loss(nn.Module):
         thresholds = torch.tensor(thresholds, dtype=y_true.dtype, requires_grad=False)
         
         weights = torch.ones_like(y_true, requires_grad=False)
-        weights[y_true < thresholds[0]] = 0.8
-        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 8
-        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 70
-        weights[y_true >= thresholds[2]] = 145
+        weights[y_true < thresholds[0]] = 1
+        weights[(y_true >= thresholds[0]) & (y_true < thresholds[1])] = 2
+        weights[(y_true >= thresholds[1]) & (y_true < thresholds[2])] = 60
+        weights[y_true >= thresholds[2]] = 150
 
         return weights.to('cuda')  
 
