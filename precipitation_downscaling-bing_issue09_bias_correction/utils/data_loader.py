@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: MIT
 
 from torch.utils.data import DataLoader
-from dataset_prep import PrecipDatasetInter
-from dataset_prep_sr import PrecipDatasetSR
+from main_scripts.dataset_prep import PrecipDatasetInter
+from main_scripts.dataset_prep_sr import PrecipDatasetSR
 from main_scripts.dataset_temp import CustomTemperatureDataset
 
 def create_loader(file_path: str = None,

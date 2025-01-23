@@ -98,6 +98,25 @@ def main():
     vars_out_patches_avg = stat_data['yw_hourly_tar_avg']
     vars_out_patches_std  = stat_data['yw_hourly_tar_std']
 
+    cape_in_min = stat_data['cape_in_min']
+    cape_in_max = stat_data['cape_in_max']
+    tclw_in_min = stat_data['tclw_in_min']
+    tclw_in_max = stat_data['tclw_in_max']
+    sp_in_min = stat_data['sp_in_min']
+    sp_in_max = stat_data['sp_in_max']
+    tcwv_in_min = stat_data['tcwv_in_min']
+    tcwv_in_max = stat_data['tcwv_in_max']
+    lsp_in_min = stat_data['lsp_in_min']
+    lsp_in_max = stat_data['lsp_in_max']
+    cp_in_min = stat_data['cp_in_min']
+    cp_in_max = stat_data['cp_in_max']
+    tisr_in_min = stat_data['tisr_in_min']
+    tisr_in_max = stat_data['tisr_in_max']
+    u700_in_min = stat_data['u700_in_min']
+    u700_in_max = stat_data['u700_in_max']
+    v700_in_min = stat_data['v700_in_min']
+    v700_in_max = stat_data['v700_in_max']
+
     #Diffusion model
 
     if args.model_type == "diffusion" or args.model_type == "diffusion2" :
@@ -273,6 +292,17 @@ def main():
                 lons_list = [] #lons
                 inter_list = []
                 tops_list = [] 
+                # 每个变量存储单独的结果列表
+                input_list_cape_in = []
+                input_list_tclw_in = []
+                input_list_sp_in = []
+                input_list_tcwv_in = []
+                input_list_lsp_in = []
+                input_list_cp_in = []
+                input_list_tisr_in = []
+                input_list_u700_in = []
+                input_list_v700_in = []
+
                 for i, test_data in enumerate(test_loader):
                     idx += 1
                     batch_size = test_data["L"].shape[0]
@@ -292,7 +322,44 @@ def main():
                     input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max - vars_in_patches_min )+ vars_in_patches_min 
                     # input_temp = np.squeeze(input_vars[:,-1,:,:])  #* (vars_in_patches_std )+ vars_in_patches_avg 
                     input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
- 
+
+                    # 对每个气象变量执行反归一化和反对数变换
+                    input_temp_cape_in = np.squeeze(input_vars[:, 0, :, :]).cpu().numpy() * (cape_in_max - cape_in_min) + cape_in_min
+                    input_temp_cape_in = np.exp(input_temp_cape_in + np.log(args.k)) - args.k
+                    input_list_cape_in.append(input_temp_cape_in)
+
+                    input_temp_tclw_in = np.squeeze(input_vars[:, 1, :, :]).cpu().numpy() * (tclw_in_max - tclw_in_min) + tclw_in_min
+                    input_temp_tclw_in = np.exp(input_temp_tclw_in + np.log(args.k)) - args.k
+                    input_list_tclw_in.append(input_temp_tclw_in)
+
+                    input_temp_sp_in = np.squeeze(input_vars[:, 2, :, :]).cpu().numpy() * (sp_in_max - sp_in_min) + sp_in_min
+                    input_temp_sp_in = np.exp(input_temp_sp_in + np.log(args.k)) - args.k
+                    input_list_sp_in.append(input_temp_sp_in)
+
+                    input_temp_tcwv_in = np.squeeze(input_vars[:, 3, :, :]).cpu().numpy() * (tcwv_in_max - tcwv_in_min) + tcwv_in_min
+                    input_temp_tcwv_in = np.exp(input_temp_tcwv_in + np.log(args.k)) - args.k
+                    input_list_tcwv_in.append(input_temp_tcwv_in)
+
+                    input_temp_lsp_in = np.squeeze(input_vars[:, 4, :, :]).cpu().numpy() * (lsp_in_max - lsp_in_min) + lsp_in_min
+                    input_temp_lsp_in = np.exp(input_temp_lsp_in + np.log(args.k)) - args.k
+                    input_list_lsp_in.append(input_temp_lsp_in)
+
+                    input_temp_cp_in = np.squeeze(input_vars[:, 5, :, :]).cpu().numpy() * (cp_in_max - cp_in_min) + cp_in_min
+                    input_temp_cp_in = np.exp(input_temp_cp_in + np.log(args.k)) - args.k
+                    input_list_cp_in.append(input_temp_cp_in)
+
+                    input_temp_tisr_in = np.squeeze(input_vars[:, 6, :, :]).cpu().numpy() * (tisr_in_max - tisr_in_min) + tisr_in_min
+                    input_temp_tisr_in = np.exp(input_temp_tisr_in + np.log(args.k)) - args.k
+                    input_list_tisr_in.append(input_temp_tisr_in)
+
+                    input_temp_u700_in = np.squeeze(input_vars[:, 7, :, :]).cpu().numpy() * (u700_in_max - u700_in_min) + u700_in_min
+                    input_temp_u700_in = np.exp(input_temp_u700_in + np.log(args.k)) - args.k
+                    input_list_u700_in.append(input_temp_u700_in)
+
+                    input_temp_v700_in = np.squeeze(input_vars[:, 8, :, :]).cpu().numpy() * (v700_in_max - v700_in_min) + v700_in_min
+                    input_temp_v700_in = np.exp(input_temp_v700_in + np.log(args.k)) - args.k
+                    input_list_v700_in.append(input_temp_v700_in)
+        
                     model.netG_forward(i)
                     #Get the prediction values
                     # preds = model.E.cpu().numpy()
@@ -355,6 +422,15 @@ def main():
                 hr_list = np.concatenate(hr_list,0)
                 hr_orig_list = np.concatenate(hr_orig_list,0)
                 top_list = np.concatenate(tops_list,0)
+                intL_cape_in = np.concatenate(input_list_cape_in, 0)
+                intL_tclw_in = np.concatenate(input_list_tclw_in, 0)
+                intL_sp_in = np.concatenate(input_list_sp_in, 0)
+                intL_tcwv_in = np.concatenate(input_list_tcwv_in, 0)
+                intL_lsp_in = np.concatenate(input_list_lsp_in, 0)
+                intL_cp_in = np.concatenate(input_list_cp_in, 0)
+                intL_tisr_in = np.concatenate(input_list_tisr_in, 0)
+                intL_u700_in = np.concatenate(input_list_u700_in, 0)
+                intL_v700_in = np.concatenate(input_list_v700_in, 0)
   
                 datetimes = []
                 for i in range(times.shape[0]):
@@ -365,6 +441,24 @@ def main():
                 pred = pred[:, 0 , : ,:]
             if len(intL.shape) == 4:
                 intL = intL[:, 0,: ,:]
+            if len(intL_cape_in.shape) == 4:
+                intL_cape_in = intL_cape_in[:, 0, :, :] 
+            if len(intL_tclw_in.shape) == 4:
+                intL_tclw_in = intL_tclw_in[:, 0, :, :]  
+            if len(intL_sp_in.shape) == 4:
+                intL_sp_in = intL_sp_in[:, 0, :, :] 
+            if len(intL_tcwv_in.shape) == 4:
+                intL_tcwv_in = intL_tcwv_in[:, 0, :, :] 
+            if len(intL_lsp_in.shape) == 4:
+                intL_lsp_in = intL_lsp_in[:, 0, :, :] 
+            if len(intL_cp_in.shape) == 4:
+                intL_cp_in = intL_cp_in[:, 0, :, :] 
+            if len(intL_tisr_in.shape) == 4:
+                intL_tisr_in = intL_tisr_in[:, 0, :, :] 
+            if len(intL_u700_in.shape) == 4:
+                intL_u700_in = intL_u700_in[:, 0, :, :]
+            if len(intL_v700_in.shape) == 4:
+                intL_v700_in = intL_v700_in[:, 0, :, :] 
             if len(hr_list.shape) == 4:
                 hr_list = hr_list[:, 0,: ,:]
             if len(hr_orig_list.shape) == 4:
@@ -375,6 +469,15 @@ def main():
             ds = xr.Dataset(
                 data_vars = dict(
                     inputs = (["time", "lat_in", "lon_in"], intL),
+                    cape_in=(["time", "lat_in", "lon_in"], intL_cape_in),
+                    tclw_in=(["time", "lat_in", "lon_in"], intL_tclw_in),
+                    sp_in=(["time", "lat_in", "lon_in"], intL_sp_in),
+                    tcwv_in=(["time", "lat_in", "lon_in"], intL_tcwv_in),
+                    lsp_in=(["time", "lat_in", "lon_in"], intL_lsp_in),
+                    cp_in=(["time", "lat_in", "lon_in"], intL_cp_in),
+                    tisr_in=(["time", "lat_in", "lon_in"], intL_tisr_in),
+                    u700_in=(["time", "lat_in", "lon_in"], intL_u700_in),
+                    v700_in=(["time", "lat_in", "lon_in"], intL_v700_in),
                     inter = (["time", "lat", "lon"], np.squeeze(inter_list)),
                     fcst = (["time", "lat", "lon"], np.squeeze(pred)),
                     hr = (["time", "lat", "lon"], hr_list),

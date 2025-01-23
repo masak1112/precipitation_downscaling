@@ -220,12 +220,13 @@ class UNet(nn.Module):
     def forward(self, x: Tensor, topography: Tensor) -> Tensor:
         # x = x.cuda()
         # print("input shape",x.shape)
-        if self.dataset_type == 'precipitation':
-            x = self.upsampling(x)
-            # print("x shape:",x.shape)
+        # if self.dataset_type == 'precipitation':
+        #     x = self.upsampling(x)
+        #     print("x shape:",x.shape)
+        # print("x shape:",x.shape)
         # remove top  
         # topography = nn.functional.interpolate(topography, scale_factor=1)
-        top = nn.functional.interpolate(topography, scale_factor=1)
+        top = nn.functional.interpolate(topography, scale_factor=0.1, mode='bicubic')
         x = torch.cat((x, top), 1)
         # print("x shape:",x.shape)
 
@@ -252,13 +253,16 @@ class UNet(nn.Module):
         d3 = self.up3(d2, s1)
         # print("d3 shape:", d3.shape)
         output = self.output(d3) 
-        return output
+        if self.dataset_type == 'precipitation':
+            output_last = self.upsampling(output)
+
+        return output_last
 
 
-# net = UNet(n_channels = 1,)
+# net = UNet(n_channels = 10)
 
-# x = torch.rand((10,1,16,16))
-# top = torch.rand((10,1,160,160))
+# x = torch.rand((24,10,16,16))
+# top = torch.rand((24,1,160,160))
 
 # pred = net(x,top)
 # print(pred.shape)
