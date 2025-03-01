@@ -319,53 +319,53 @@ def main():
                     input_temp = input_vars.cpu().numpy()
                     # input_temp = np.squeeze(input_vars[:,-1,:,:])
                     # input_temp = input_temp.cpu().numpy()
-                    input_temp = np.squeeze(input_vars[:,-1,:,:])* (vars_in_patches_max - vars_in_patches_min )+ vars_in_patches_min 
+                    input_temp = np.squeeze(input_vars[:,-1,:,:]).cpu().numpy() # * (vars_in_patches_max - vars_in_patches_min )+ vars_in_patches_min 
                     # input_temp = np.squeeze(input_vars[:,-1,:,:])  #* (vars_in_patches_std )+ vars_in_patches_avg 
-                    input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
+                    # input_temp = np.exp(input_temp.cpu().numpy()+np.log(args.k))-args.k
 
                     # 对每个气象变量执行反归一化和反对数变换
-                    input_temp_cape_in = np.squeeze(input_vars[:, 0, :, :]).cpu().numpy() * (cape_in_max - cape_in_min) + cape_in_min
-                    input_temp_cape_in = np.exp(input_temp_cape_in + np.log(args.k)) - args.k
+                    input_temp_cape_in = np.squeeze(input_vars[:, 0, :, :]).cpu().numpy() #* (cape_in_max - cape_in_min) + cape_in_min
+                    # input_temp_cape_in = np.exp(input_temp_cape_in + np.log(args.k)) - args.k
                     input_list_cape_in.append(input_temp_cape_in)
 
-                    input_temp_tclw_in = np.squeeze(input_vars[:, 1, :, :]).cpu().numpy() * (tclw_in_max - tclw_in_min) + tclw_in_min
-                    input_temp_tclw_in = np.exp(input_temp_tclw_in + np.log(args.k)) - args.k
+                    input_temp_tclw_in = np.squeeze(input_vars[:, 1, :, :]).cpu().numpy()# * (tclw_in_max - tclw_in_min) + tclw_in_min
+                    # input_temp_tclw_in = np.exp(input_temp_tclw_in + np.log(args.k)) - args.k
                     input_list_tclw_in.append(input_temp_tclw_in)
 
-                    input_temp_sp_in = np.squeeze(input_vars[:, 2, :, :]).cpu().numpy() * (sp_in_max - sp_in_min) + sp_in_min
-                    input_temp_sp_in = np.exp(input_temp_sp_in + np.log(args.k)) - args.k
+                    input_temp_sp_in = np.squeeze(input_vars[:, 2, :, :]).cpu().numpy() #* (sp_in_max - sp_in_min) + sp_in_min
+                    # input_temp_sp_in = np.exp(input_temp_sp_in + np.log(args.k)) - args.k
                     input_list_sp_in.append(input_temp_sp_in)
 
-                    input_temp_tcwv_in = np.squeeze(input_vars[:, 3, :, :]).cpu().numpy() * (tcwv_in_max - tcwv_in_min) + tcwv_in_min
-                    input_temp_tcwv_in = np.exp(input_temp_tcwv_in + np.log(args.k)) - args.k
+                    input_temp_tcwv_in = np.squeeze(input_vars[:, 3, :, :]).cpu().numpy()# * (tcwv_in_max - tcwv_in_min) + tcwv_in_min
+                    # input_temp_tcwv_in = np.exp(input_temp_tcwv_in + np.log(args.k)) - args.k
                     input_list_tcwv_in.append(input_temp_tcwv_in)
 
-                    input_temp_lsp_in = np.squeeze(input_vars[:, 4, :, :]).cpu().numpy() * (lsp_in_max - lsp_in_min) + lsp_in_min
-                    input_temp_lsp_in = np.exp(input_temp_lsp_in + np.log(args.k)) - args.k
+                    input_temp_lsp_in = np.squeeze(input_vars[:, 4, :, :]).cpu().numpy()# * (lsp_in_max - lsp_in_min) + lsp_in_min
+                    # input_temp_lsp_in = np.exp(input_temp_lsp_in + np.log(args.k)) - args.k
                     input_list_lsp_in.append(input_temp_lsp_in)
 
-                    input_temp_cp_in = np.squeeze(input_vars[:, 5, :, :]).cpu().numpy() * (cp_in_max - cp_in_min) + cp_in_min
-                    input_temp_cp_in = np.exp(input_temp_cp_in + np.log(args.k)) - args.k
+                    input_temp_cp_in = np.squeeze(input_vars[:, 5, :, :]).cpu().numpy() # * (cp_in_max - cp_in_min) + cp_in_min
+                    # input_temp_cp_in = np.exp(input_temp_cp_in + np.log(args.k)) - args.k
                     input_list_cp_in.append(input_temp_cp_in)
 
-                    input_temp_tisr_in = np.squeeze(input_vars[:, 6, :, :]).cpu().numpy() * (tisr_in_max - tisr_in_min) + tisr_in_min
-                    input_temp_tisr_in = np.exp(input_temp_tisr_in + np.log(args.k)) - args.k
+                    input_temp_tisr_in = np.squeeze(input_vars[:, 6, :, :]).cpu().numpy() # * (tisr_in_max - tisr_in_min) + tisr_in_min
+                    # input_temp_tisr_in = np.exp(input_temp_tisr_in + np.log(args.k)) - args.k
                     input_list_tisr_in.append(input_temp_tisr_in)
 
-                    input_temp_u700_in = np.squeeze(input_vars[:, 7, :, :]).cpu().numpy() * (u700_in_max - u700_in_min) + u700_in_min
-                    input_temp_u700_in = np.exp(input_temp_u700_in + np.log(args.k)) - args.k
+                    input_temp_u700_in = np.squeeze(input_vars[:, 7, :, :]).cpu().numpy() # * (u700_in_max - u700_in_min) + u700_in_min
+                    # input_temp_u700_in = np.exp(input_temp_u700_in + np.log(args.k)) - args.k
                     input_list_u700_in.append(input_temp_u700_in)
 
-                    input_temp_v700_in = np.squeeze(input_vars[:, 8, :, :]).cpu().numpy() * (v700_in_max - v700_in_min) + v700_in_min
-                    input_temp_v700_in = np.exp(input_temp_v700_in + np.log(args.k)) - args.k
+                    input_temp_v700_in = np.squeeze(input_vars[:, 8, :, :]).cpu().numpy() # * (v700_in_max - v700_in_min) + v700_in_min
+                    # input_temp_v700_in = np.exp(input_temp_v700_in + np.log(args.k)) - args.k
                     input_list_v700_in.append(input_temp_v700_in)
         
                     model.netG_forward(i)
                     #Get the prediction values
                     # preds = model.E.cpu().numpy()
-                    preds = model.E.cpu().numpy() * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min
+                    preds = model.E.cpu().numpy() # * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min
                     # preds = model.E.cpu().numpy() #* (vars_in_patches_std) + vars_in_patches_avg
-                    preds = np.exp(preds+np.log(args.k))-args.k
+                    # preds = np.exp(preds+np.log(args.k))-args.k
                     preds[preds<0] = 0
                     preds[preds>55] = 55
                     if np.any(preds.flatten() < 0, axis=0):
@@ -373,8 +373,8 @@ def main():
                     if np.any(preds.flatten() > 55):
                         raise ValueError("There are values greater than 55 in preds data after de-transformation") 
 
-                    inter = model.L_inter.cpu().numpy() * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min
-                    inter = np.exp(inter+np.log(args.k))-args.k
+                    inter = model.L_inter.cpu().numpy() # * (vars_out_patches_max - vars_out_patches_min) + vars_out_patches_min
+                    # inter = np.exp(inter+np.log(args.k))-args.k
                     inter[inter<0] = 0
                     if np.any(inter.flatten() < 0, axis=0):
                         raise ValueError("There are negative values in inter data after de-transformation") 
@@ -382,23 +382,23 @@ def main():
                     #Get the groud truth values
                     # hr = test_data["H"].cpu().numpy()
                     # H : target
-                    hr = test_data["H"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    hr = test_data["H"].cpu().numpy() # * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     # hr = test_data["H"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
-                    hr = np.exp(hr+np.log(args.k))-args.k
+                    # hr = np.exp(hr+np.log(args.k))-args.k
                     hr[hr<0] = 0
                     if np.any(hr.flatten() < 0, axis=0):
                         raise ValueError("There are negative values in HR data after de-transformation") 
 
                     # hr_orig =  test_data["H_orig"].cpu().numpy()
-                    hr_orig =  test_data["H_orig"].cpu().numpy() * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
+                    hr_orig =  test_data["H_orig"].cpu().numpy() # * (vars_out_patches_max -vars_out_patches_min) + vars_out_patches_min 
                     # hr_orig =  test_data["H_orig"].cpu().numpy() #* (vars_out_patches_std) + vars_out_patches_avg
-                    hr_orig = np.exp(hr_orig+np.log(args.k ))-args.k 
+                    # hr_orig = np.exp(hr_orig+np.log(args.k ))-args.k 
                     hr_orig[hr_orig<0] = 0
                     if np.any(hr_orig.flatten() < 0, axis=0):
                         raise ValueError("There are negative values in hr_orig data after de-transformation")  
                     # get the raw topograph data
                     # normalize(tops, avg = 312.71216, std = 442.65375)
-                    top = top *(3846+182) -182
+                    top = top #*(3846+182) -182
 
                     
                     lats_list.append(lats)
@@ -504,7 +504,7 @@ def main():
 
     save_paths = []
     for y in years:
-        save_paths.append(os.path.join(args.save_dir,'prcp_downs_'+args.model_type+f'_year_{y}.nc'))
+        save_paths.append(os.path.join(args.save_dir,'prcp_downs_nonorm_'+args.model_type+f'_year_{y}.nc'))
 
     print('save_paths: {}'.format(save_paths))
     xr.save_mfdataset(datasets, save_paths)
